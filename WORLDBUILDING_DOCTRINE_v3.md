@@ -1,10 +1,26 @@
-# 🌍 WORLD-BUILDING ENGINEERING DOCTRINE v3.0
+# 🌍 WORLD-BUILDING ENGINEERING DOCTRINE v3.1
 
 Paste this entire document to any AI, then describe the NEW game or movie idea you want built — or point it at an existing repo to improve.
 
 > **v3 changelog.** v2 was correct. What it lacked was *enforcement*: it specified checks that nobody implemented, so laws were broken silently and found by walking into them days later. v3 keeps every v2 rule intact and adds four things: the **form hierarchy** (Part 3B), **declared intent** so validation stops crying wolf (Part 2B), the **enforcement contract** — machine-readable reports, apertures, regression diffing (Part 9), and **new failure laws** learned in production (Part 6B).
 >
 > **Where v2 and later practice disagree, this document keeps BOTH** and says when each applies. A value that worked in one project is not wrong because another project chose differently.
+>
+> **v3.1 changelog.** Adds **Part 0B — the diagnosis gate**: measure before you conclude, plus the reflexes that have already been tried and failed, so a symptom does not get matched to the wrong cause before work starts. Adds eight **measurement faults** to Part 6B (12–19), every one of which produced a confidently wrong number on a live project. Adds **prompt C** for single hero assets, where the budget maths inverts. Nothing was removed.
+
+---
+
+## HOW TO READ THIS
+
+This document is long because it is cumulative. You do not need all of it at once:
+
+| If you are… | Read |
+|---|---|
+| Diagnosing something that looks wrong | **Part 0B**, then Part 4 and 4B |
+| Starting a new world | Part 0, 8, 9 — then 1–3 |
+| Building one hero asset | Part 0B, 3B, 4, 4C, 9 |
+| Chasing performance | Part 6B #12, Part 5, Part 9.1 |
+| About to say "it needs better lighting" | **Part 0B.** Read it before anything else. |
 
 ---
 
@@ -26,6 +42,49 @@ This document is your engineering doctrine: proven principles, constants, schema
 6. **Build the enforcement layer early (Part 9), not last.** A rule nobody checks is a rule that will be broken. If you implement only one thing from this document before writing content, implement the scene report.
 7. **Measure before you conclude.** When something looks wrong, read the actual numbers — pixel values, bounding boxes, uniforms, timings — before forming a theory. Guessing from a screenshot is how five wrong hypotheses happen in a row.
 8. **Report honestly.** Say what you verified and how. If a test was inconclusive, say so. Never present an estimate as a measurement.
+
+---
+
+## PART 0B — THE DIAGNOSIS GATE *(new in v3.1)*
+
+> **The failure this part exists to prevent:** a symptom gets matched to the most common cause in training data, and *that* is proposed as the diagnosis. It is fast, confident, and sounds reasonable — which is why nobody checks it for days.
+>
+> **This is not an instruction to stop thinking.** Independent investigation is wanted, including investigation this document did not anticipate. If you find a better route, take it and say why — Part 0 rule 4 already asks for exactly that, and a project you can see is worth more than a document you were handed. What follows constrains **when you may call something a diagnosis**, not what you are allowed to explore.
+
+### Measure before you conclude
+
+**Produce the measurements below before presenting a diagnosis.** Investigate however you like on the way there — but the numbers land first, in a message that proposes nothing, so the conclusion can be checked against something.
+
+| Question | The measurement — not the impression |
+|---|---|
+| Is what I'm reading actually what's live? | Hash the deployed files against the local checkout. Never optimise a file that isn't the one running. |
+| How big is the surface detail? | Pixels per repeat, converted to metres through the *actual* UV scale. Compare against the real-world dimension. |
+| How big is anything? | World-space bounding boxes read out of the asset. Never estimated from a screenshot. |
+| What does it cost? | Draw calls and triangles from the renderer's own counters, at a **fixed wide camera**. |
+| Is it too dark? | **Linear** albedo of the base colour. Floor ≈ 0.03, ceiling ≈ 0.85. |
+| Does the fix belong where I think? | Which code path builds the thing? Confirm it, don't assume. |
+
+### Reflexes that have already been tried
+
+These are not forbidden answers. They are answers that have **already been attempted on real projects and did not deliver** — so if you arrive at one, you are probably re-running a failed experiment, and you should at minimum check whether it has been done before spending anything on it.
+
+| Symptom | The reflex — and what it missed |
+|---|---|
+| Looks flat / fake / like a toy | *"It needs shadows, lighting, tone mapping."* **Check whether a light rig already exists** — it usually does, and lighting a toy gives you a well-lit toy. Lighting is not wrong, it is *last*. It is the final 10% and it cannot rescue the other 90%. |
+| Surfaces look wrong | *"Add a normal map."* Measure texel density first. The detail is far more often the wrong **size** than missing. |
+| Runs badly | *"Reduce triangles."* Count **draw calls** first. On the web it is nearly always draw calls. |
+| Something sits wrong | *"Nudge the offset until it looks right."* Solve the generating maths for it. A tuned constant hides the real error and it comes back. |
+| One material reads badly | *"Tint it."* A colour multiply can only ever darken. To lift, use gamma < 1 (Part 4B). |
+
+**The worked example.** A town square read as a toy. Multiple lighting passes were done; ACES tone mapping, sky-matched fog and soft shadows were all already in place, and it still read as plastic. What actually removed it: the pavement went from a 96 px hand-drawn grid tiled at repeat 3 to a photographic granite sett at a **measured** 1.25 × 2.5 m tile — and the same for brick, whose courses were measured at 163.7 mm against a real 75 mm. Same geometry, same lights, same everything else. The surface was the whole difference.
+
+Lighting still mattered afterwards — missing shadow bias, and window glass that should ramp warm at dusk instead of glowing at noon. But those were finishing moves on a world that already read as real, not the thing that made it real.
+
+### The honesty clause
+
+Every report states, every time: **what changed · what was VERIFIED and how · what could NOT be verified · what was deliberately skipped.** Include the numbers, and say which camera and viewport a performance figure came from.
+
+"This should work" and "I verified this" are different sentences and must never be blurred. A green light from a weak test is worse than no test.
 
 ---
 
@@ -318,6 +377,17 @@ Each of these cost real debugging time. They are ordered by how much.
 9. **Never let a validator report intentional design as error.** See Part 2B. Noise kills adoption, and an ignored validator is worse than none.
 10. **Never set night lighting by physical plausibility alone.** Real moonlight renders as unplayable black. Set it by what stays legible on screen, lift exposure to compensate, and say plainly that you did.
 11. **Never let two systems own the same input.** If "forward" drives both walking and ladder climbing, it will do both at once and walk the player off the ladder. One owner per input per state.
+
+### Measurement faults *(added v3.1 — every one of these produced a confidently wrong number)*
+
+12. **Never quote a cost measured with the camera pointed at part of the scene.** Frustum culling removes everything off-screen, so a camera aimed at one building reported 65 draw calls where the real whole-view figure was 796. That number was reported as evidence before anyone noticed. **Measure from a fixed wide camera that contains the subject**, and state which camera the figure came from.
+13. **Never compare two captures taken at different points in a free-running cycle.** A world on a 300-second day/night cycle produces a "before" at noon and an "after" at dusk, and the change looks like a catastrophic regression it is not. **Pin time-of-day, camera and animation behind a dev flag before comparing anything.** Then the A/B differs only in the thing under test.
+14. **Never measure a repeating pattern by scanning one row or column.** A single-column scan of running-bond masonry lands on the bond boundary, sees every *other* course, and reports exactly 2× the true pitch. Scan the full row and take the fraction, or autocorrelate. *This one is insidious because 2× is plausible.*
+15. **Never guess an envelope you can solve for.** Leaf cards were placed on a radius eyeballed from a screenshot; the crown's true radius, derived from the generator's own placement maths, was smaller — so every tree rendered as a smooth ball with a leafy shell hovering off it. Two objects, not one. **Read the generator, solve for the number.**
+16. **Never let a quality tier silently disable a feature on the device class most users have.** A canopy was skipped on `mobile-lite`; that tier is where real iPhones land, because Safari reports `hardwareConcurrency` 4 and the tier logic treated ≤ 4 cores as weak. Desktop looked finished, phones looked untouched, and only the owner testing on his own phone caught it. **Check what your tier logic does on the actual majority device.** Scale a feature down there; do not switch it off.
+17. **Never stack two darkenings.** A dark colour multiply *and* a raised gamma on the same material crushed two brick facades to near-black. Each looked reasonable alone. **A multiply can only ever darken — to lift, use gamma below 1** (Part 4B).
+18. **Never declare state next to the function that fills it if an earlier-running function reads it.** A `let` declared beside its builder, read by a function that runs during init, is a temporal-dead-zone `ReferenceError` that aborts module evaluation — and surfaces as a completely unrelated "cannot access X before initialization" further down the file. **Hoist shared state to the top of the module.** The reported error will not be the real one.
+19. **Never assume user-placed content shares the code path you just fixed.** Build-mode props were constructed in application code, not loaded from the art kit, so a world-wide material upgrade left every player-placed object wearing the old flat look — standing right beside the fixed ones. **Enumerate every code path that constructs geometry** before declaring a material change complete.
 
 ---
 

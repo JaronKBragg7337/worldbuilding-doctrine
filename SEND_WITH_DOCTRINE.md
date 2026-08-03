@@ -69,6 +69,57 @@ Measure before you conclude, and show me the numbers when you verify something.
 
 ---
 
+## C · Single hero asset (one object, no world)
+
+Use this when the deliverable is **one thing** — a ship, a vehicle, a landmark, a
+creature — rather than a place. The budget maths inverts: a world spreads its
+triangles over 200 m, a hero asset spends all of them on one hull, so most of
+what the doctrine says to economise on you should *not* economise on here.
+
+```
+Attached is my world-building engineering doctrine. Read all of it before you
+start — it is how I want the work done, not background reading.
+
+Project: <<<PASTE REPO URL HERE>>>
+Engine: <<<Three.js / Unity / Unreal>>>
+The asset: <<<ONE OBJECT + ONE LINE ON WHAT IT IS>>>
+
+SCOPE. This repo contains that one asset and a viewer to orbit it. No game, no
+world, no terrain, no UI, no gameplay. Nothing else gets added until the asset
+is finished. If you think of a feature, put it in TODO.md and do not build it.
+
+Work in this order:
+
+1. Harness first (Part 9), including a TURNTABLE — the same fixed camera angles
+   every run. A hero asset cannot be judged from one render; most mistakes only
+   show at one angle. Pin anything that moves (time of day, camera, animation)
+   or two captures are not comparable.
+2. Material system before lighting (Part 4, 4B, 4C). Photographic CC0 PBR
+   sources, not textures drawn in code. Real-world tile size MEASURED from the
+   source, carried as a vec2 — photographic sources are often 2:1 and a scalar
+   stretches them. Project UVs from position; use OBJECT space, because the
+   asset moves.
+3. Form hierarchy (Part 3B) as the spine: primary silhouette, then secondary
+   components, then tertiary construction detail (seams, rivets, welds, hinges,
+   vents, grab rails), then micro wear. Tertiary detail is INSTANCED. Bevel
+   every exposed edge.
+4. Human scale is what sells size. Put in real dimensions and tell me what they
+   are — hatch 2.0 x 0.9 m, handrail at 0.9 m, rungs 0.3 m apart — and give me
+   a 1.8 m reference figure I can toggle.
+5. Lighting last.
+
+Before content, show me the material card table: every card, its tile size in
+metres, and whether that number was MEASURED or ESTIMATED. If you cannot
+produce that table, the material system does not exist yet.
+
+Measure before you conclude (Part 0B). Report what you verified and how, what
+you could not verify, and what you skipped. If something in the doctrine is
+wrong for this asset, say so and explain — I would rather have your judgement
+than silent compliance.
+```
+
+---
+
 ## What to expect from a good response
 
 A capable AI given this should, unprompted:

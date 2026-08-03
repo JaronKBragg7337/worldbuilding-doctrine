@@ -22,6 +22,12 @@ Project: <<<PASTE REPO URL HERE>>>
 
 ## What's in it
 
+**Part 0B · The diagnosis gate** — measure before you conclude, and a list of the
+reflexes that have already been tried and failed. This is the part that stops a
+symptom being matched to the wrong cause before any work starts. It constrains
+when something may be called a diagnosis; it does not ask the AI to stop
+thinking, and it explicitly invites disagreement with the rest of the document.
+
 **Parts 1–8** — conventions, placement contracts, geometry vocabulary, material
 cards, engine pipelines, failure laws, control/camera reference values, and the
 build protocol.
@@ -61,3 +67,15 @@ most valuable part of the document precisely because every line was paid for.
 post-apocalyptic wasteland. The enforcement layer took that project's validator
 from 67 issues (mostly false positives) to 0, and immediately surfaced two real
 placement faults that were invisible in screenshots.
+
+[Heartbeat Observatory](https://github.com/JaronKBragg7337/heartbeat-observatory) —
+a live multiplayer town square that read as a toy despite already having ACES
+tone mapping, sky-matched fog and soft shadows in place. Measurement first: brick
+courses were **163.7 mm against a real 75 mm**, so a 3 m wall showed 18 courses
+where it should show 40. Rebuilding surfaces as a projected material system on
+photographic CC0 sources — same geometry, same lights — is what removed the
+plastic look. Windows became real assemblies at 3 draw calls for 252 of them;
+foliage got alpha cutouts at 1 draw call for 24 trees.
+
+Parts 0B and 6B #12–19 all come from that job. Every one of those entries is a
+number that was reported confidently and was wrong.
