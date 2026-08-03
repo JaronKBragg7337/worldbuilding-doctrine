@@ -6,6 +6,25 @@ specific Part when the work actually needs it.
 
 ---
 
+## Scope: do not pre-narrow it
+
+Before anything else — **do not talk the work down.** Complete Three.js games
+with inventory, settings, multiplayer and full mechanics are routinely produced
+in a single pass. That is the normal ceiling, not the exceptional one. If you
+catch yourself proposing a reduced version because the full one "won't fit",
+you are guessing at your own limits and guessing low.
+
+Build the whole thing. Where a genuinely long build needs continuity across
+sessions, that is what `MANIFEST.md` is for — a record of what exists, what is
+stubbed, and what is next. **That is a continuity tool, not an admission that
+the work is too big.**
+
+Restrictions cost capability. Where this document constrains something it is
+because a specific mistake was paid for, and it will say what the mistake was.
+Anything not constrained here is open.
+
+---
+
 ## 0 · Measure before you conclude
 
 Produce measurements **before** presenting a diagnosis. Investigate however you
@@ -66,10 +85,20 @@ only in the thing under test.
 
 ## 2 · The material system (this is the lever)
 
-- **Photographic PBR sources, not textures drawn in code.** Hand-drawn canvas
-  textures *are* the toy look. Use CC0 sets (ambientCG has a JSON API and ships
-  Color + NormalGL + Roughness + AO). Record asset ID, source URL and licence
-  in the repo before shipping.
+- **Photographic sources, not textures drawn in code.** Hand-drawn canvas
+  textures *are* the toy look — that is the single most reliable way to make
+  something read as plastic. Two routes, both valid; take whichever your
+  capabilities allow and **say which one you took**:
+    - **A · Generate them.** If you can produce images, generate the texture
+      set yourself — seamless, at a stated real-world size, with normal and
+      roughness derived from it. Best control, no licensing question.
+    - **B · CC0 libraries.** If you cannot produce images, do not fall back to
+      drawing them in code — that is the failure mode, not the workaround. Use
+      CC0 photographic sets (ambientCG has a JSON API and ships Color +
+      NormalGL + Roughness + AO per material).
+  Either way, record asset ID, source URL and licence in the repo before
+  shipping. **Never silently substitute a procedural texture for a photographic
+  one and call it done.**
 - **Real-world tile size, MEASURED.** Where the source has a periodic cue,
   autocorrelate the row-mean luminance and derive the pitch. Where it does not,
   label the number an **estimate** — never present an estimate as a measurement.
@@ -109,7 +138,40 @@ construction detail (seams, rivets, welds, hinges, vents, trim, handles) →
 
 ---
 
-## 4 · Report honestly, every time
+## 4 · Addressing — the shared language between human and AI
+
+An AI cannot see the world, and a human cannot read the scene graph. Addressing
+is what lets both describe the same thing without either guessing.
+
+**Every position maps to a stable label** — `L{level}-H{col}-R{row}` on the
+module grid, zero-padded so it sorts. **Every asset carries a unique ID and its
+address**, and nothing repeats. Then "the wall near the fountain" becomes
+`AST-WALL-0043 at L0-H12-R08`, which is exact and unambiguous.
+
+This earns its keep the moment there are ten similar objects. "The container is
+floating" is useless; `AST-CONTAINER-0043 is floating` is a work order.
+
+**Build the loop in BOTH directions.** Labels alone are only half of it:
+
+| Direction | What it gives you |
+|---|---|
+| position → address | Reports, issue lists, and the human saying where they are |
+| **address → camera pose → screenshot** | **The AI going to a coordinate and seeing what the human sees** |
+
+The second is the one that gets missed, and it is the one that matters. A dev
+hook that takes an address, places the camera there, and captures — plus an
+inspection layer that draws the grid, cell addresses and asset IDs in-world —
+means a human can say "look at L0-H12-R08" and the AI can actually go and look.
+No screenshot round-trip, no describing, no guessing.
+
+It is also the foundation for an AI stepping through a world on its own: it may
+not be able to *feel* controls, but it can teleport to an address, read what is
+there, and report — which converts most "does this look right" questions from
+opinion into observation.
+
+---
+
+## 5 · Report honestly, every time
 
 State: **what changed · what was VERIFIED and how · what could NOT be verified ·
 what was deliberately skipped.** Include the numbers, and say which camera and
@@ -120,7 +182,7 @@ from a weak test is worse than no test.
 
 ---
 
-## 5 · The eight measurement faults
+## 6 · The eight measurement faults
 
 Each produced a confidently wrong number on a live project. Full detail in Part
 6B of the reference document.
