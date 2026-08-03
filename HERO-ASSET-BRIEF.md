@@ -1,174 +1,158 @@
-# Prompt to send with the doctrine — single hero asset (spaceship)
+# Prompt to send — hero asset as a VEHICLE TESTBED
 
-Send this **plus** `WORLDBUILDING_DOCTRINE_v3`. Change only the repo line.
+Send with `DOCTRINE-CORE.md`. Change the repo line and the asset line.
 
-> Why this is different from the doctrine's prompts A and B: those build a world.
-> This builds **one object**, which changes the budget completely. A world spends
-> its triangles across 200 m; a hero asset spends all of them on one hull. Almost
-> everything the doctrine says to economise on, you should not economise on here.
+> **Why this replaced an earlier "no game, no world" version.** That scope was
+> written for a display model — something you orbit and look at. It is wrong for a
+> vehicle. You cannot tell whether controls, camera or handling are right by
+> looking at a still object, and those are exactly the things that get discovered
+> late and force rework. A vehicle needs a **proving ground** from day one.
+>
+> The distinction that matters is **testbed, not game**: build the instrumented
+> course and the telemetry, do not build progression, enemies, menus, scoring or
+> content. The course exists to make handling measurable.
 
 ---
 
 ```
-Attached is my world-building engineering doctrine. Read all of it before you
-start — it is how I want the work done, not background reading.
+Attached is my world-building doctrine core. Read it before you start — it is
+how I want the work done, not background reading.
 
-Project: <<<PASTE NEW REPO URL HERE>>>
-Engine: Three.js. No Blender, no GLB, no imported models — see "Why no Blender".
+Project: <<<PASTE REPO URL HERE>>>
+Engine: Three.js. Everything built in code, parametrically, from one config file
+of constants. No Blender, no imported models. The look comes from a runtime
+material system, not from modelling.
 
-SCOPE — read this twice.
+--- WHAT THIS IS ---
 
-This repo contains ONE spaceship and nothing else. No game, no world, no
-terrain, no UI, no menus, no gameplay, no multiplayer. A viewer that shows the
-ship and lets me orbit it, and the ship itself. Nothing may be added to this
-repo until the ship is finished. If you think of a feature, write it in TODO.md
-and do not build it.
+One spaceship, built to a level of detail that holds up with your face against
+it, plus the minimum instrumented rig needed to prove it flies and drives
+correctly. This asset is the template every future vehicle in my games is built
+from — so the depth of detail here sets the bar for everything after it.
 
-The ship must look beyond amazing at close range. That is the entire job.
+It is NOT a game. No progression, enemies, menus, scoring, missions, or content.
+If you think of a feature, put it in TODO.md and do not build it.
 
---- WHY NO BLENDER ---
+--- THE SHIP ---
 
-I have already been through this on another project. Blender was a detour that
-did not deliver the look. The realism I am after comes from a RUNTIME MATERIAL
-SYSTEM, not from modelling. A proven reference: a post-apocalyptic Three.js
-world whose shipping containers read as real corrugated steel — those are plain
-boxes wearing a projected photographic material. The ridges are a texture and a
-shader, not geometry.
+Silhouette: NOT a pencil. Not a Starship/Falcon cylinder-with-fins. I want
+something that reads as genuinely advanced rather than as a tube — a wide,
+layered, purposeful hull with real overhangs, recesses, and asymmetry where
+function justifies it. Give me 3 silhouette options as flat orthographic
+elevations BEFORE any detailing, and let me pick. Silhouette is the primary
+form and everything else hangs off it — getting it wrong is the one mistake
+that is expensive to undo.
 
-So: build everything in code, parametrically, from one config file of constants.
-That also means the whole ship re-rolls at new proportions with one command.
+Interior, walkable, in this order:
+  1. Cockpit — seats, console, throttle, stick, switch banks, labelled buttons,
+     readouts, overhead panel, harnesses, grab handles.
+  2. A main corridor connecting fore to aft, with door frames and thresholds.
+  3. At least two decks joined by BOTH a ladder and an elevator.
+  4. Secondary rooms off the corridor (crew, cargo, engineering).
 
---- WHAT ACTUALLY MAKES IT LOOK REAL (in priority order) ---
+Exterior: hull plating with real panel seams, rivets, weld beads, access hatches
+with hinges and dogs, vents, grilles, landing gear, thrusters with scorch, grab
+rails, ladder to the hatch, warning placards.
 
-1. MATERIAL SYSTEM FIRST, LIGHTING LAST.
-   Lighting a toy gives you a well-lit toy. Do not open with shadows, tone
-   mapping or exposure. If your first instinct is "it needs better lighting",
-   you are about to waste my time — I have had that answer before and it was
-   wrong every time.
+Real dimensions everywhere, and tell me what they are: hatch 2.0 x 0.9 m,
+handrail at 0.9 m, ladder rungs 0.3 m apart, corridor 0.9-1.2 m wide, deck
+height 2.4 m, step riser under 0.2 m. A 1.8 m crew figure I can toggle. A ship
+reads as huge only when something on it is unmistakably person-sized.
 
-2. PHOTOGRAPHIC PBR SOURCE, NOT TEXTURES DRAWN IN CODE.
-   Hand-drawn canvas textures are exactly what makes something read as a toy.
-   Use CC0 photographic sets — ambientCG has a JSON API and ships Color +
-   NormalGL + Roughness + AO + Metalness per material. Download the sets you
-   need for metal, painted metal, worn panel, diamond plate, rubber, glass.
-   Convert to WebP for delivery. Record every asset ID, its source URL and its
-   licence in the repo before it ships.
+--- THE RIG (build this BEFORE the ship) ---
 
-3. REAL-WORLD TILE SIZE, MEASURED — NOT GUESSED.
-   Every material is a data card carrying the metres one tile covers. Where the
-   source has a periodic cue (plate seams, tread, rivet rows), MEASURE it:
-   autocorrelate the row-mean luminance and derive the pitch. Where it has no
-   periodic cue, say so and label the number an ESTIMATE. Never present an
-   estimate as a measurement.
-   The tile must be a vec2, not a scalar — photographic sources are often 2:1,
-   and a scalar stretches them by 2x.
+1. Headless screenshot harness, desktop AND mobile, with a TURNTABLE: the same
+   fixed camera angles every run. A hero asset cannot be judged from one render;
+   most mistakes only show at one angle. Pin anything that moves.
 
-4. PROJECT UVs FROM POSITION, ALONG THE DOMINANT NORMAL AXIS.
-   Mesh UVs make texel density a per-part chore and bevels make it worse.
-   Projection makes density one number and uniform by construction.
-   IMPORTANT: use OBJECT SPACE, not world space. The ship moves; world-space
-   projection makes the texture swim across it.
-   If you add normal maps under projection, rebuild the tangent frame
-   analytically from the projection axis and rotate it into view space. Three's
-   derivative-based tangents describe the mesh UVs you are no longer sampling.
+2. A PROVING GROUND, deliberately minimal:
+     - a ground course with turns, for hover-drive mode
+     - a set of air gates forming a route, for flight mode
+     - both defined as DATA (a list of waypoints), not hand-placed geometry
 
-5. THE VARIATION LAYERS. These are most of what sells it, and they are free
-   once the projection exists:
-     - anti-tiling: a second sample at an incommensurate scale (x0.173)
-     - grime accumulating toward the ship's underside and into recesses
-     - dust settling on up-facing normals
-     - roughness varying with the macro sample, so wear is not uniform
-     - albedo gamma lift: photographic sets are often far too dark to be
-       plausible albedos. Check the LINEAR albedo of every base colour before
-       tuning any light. Floor about 0.03, ceiling about 0.85. Correct with
-       gamma below 1 — a colour tint can only ever darken.
+3. A CONTROL TRACE. This is the most important thing in the rig.
+   Every run records, at fixed timestep: input state, ship position, velocity,
+   orientation, the intended next waypoint, and the ship's screen-space position.
+   Write it out as JSON I can hand to an AI later.
+   The point: when I fly and the ship goes the wrong way, I should not have to
+   describe it. The trace answers "the player held left, the ship yawed right"
+   or "the player was on course but the camera lost the ship" as a NUMBER.
+   Guessing at feel from a description is how control bugs survive for months.
 
-6. THE FORM HIERARCHY (doctrine Part 3B) IS THE SPINE OF THE MODEL.
-   Primary: hull, engines, wings.
-   Secondary: cockpit, intakes, cargo bay, landing gear, thrusters, airlock.
-   Tertiary: panel seams, rivets, weld beads, hinges, vents, conduit, grab
-   rails, hatch dogs, antenna, warning placards.
-   Micro: scratches, edge wear, scorch around thrusters, dust, paint chips.
-   Tertiary detail is INSTANCED — rivets number in the hundreds and belong in
-   an InstancedMesh, not hundreds of draw calls.
-   Build a detailing kit module (bevelBox, bolts, rivets, seam, weld, hinge,
-   vent, grille, ladder, handrail) so the whole ship speaks one vocabulary.
+--- THE CAMERA. READ THIS TWICE. ---
 
-7. BEVEL EVERY EXPOSED EDGE. 6-20 mm. A perfectly sharp 90 degree edge is a
-   rendering artifact, not an object. This is most of what makes a form read as
-   manufactured.
+This is the failure that has bitten me on every game I have made, and a
+screenshot will never catch it.
 
-8. HUMAN SCALE IS WHAT SELLS SIZE.
-   A ship reads as huge only when something on it is unmistakably person-sized.
-   Put in real dimensions and say what they are: hatch 2.0 x 0.9 m, handrail at
-   0.9 m, ladder rungs 0.3 m apart, step riser under 0.2 m, walkway 0.8 m wide,
-   a 1.8 m crew figure for reference. Give me a toggle to show or hide the
-   figure.
+Under sustained acceleration the follow camera lags, the ship drifts toward the
+edge of frame, and past a certain speed it leaves the screen entirely. A still
+render looks completely fine. The bug only exists while the input is HELD.
 
---- HOW I WANT YOU TO WORK ---
+Requirements:
+  - Framerate-independent damping: x += (target - x) * (1 - exp(-lambda * dt)).
+    A fixed lerp factor is framerate-dependent and will behave differently on
+    every machine.
+  - Velocity feed-forward, so the rig anticipates motion instead of chasing it.
+    A follow camera with no feed-forward has a steady-state error proportional
+    to speed — that IS this bug.
+  - A screen-space clamp as a backstop: project the ship to NDC each frame and
+    correct if it exceeds a threshold.
 
-BUILD THE HARNESS BEFORE THE SHIP. Non-negotiable. Doctrine Part 9.
-  - headless screenshot harness (Playwright or equivalent), desktop AND mobile
-  - a TURNTABLE: the same N camera angles every run, pinned. A hero asset
-    cannot be judged from one render; most mistakes only show at one angle.
-  - PIN EVERYTHING that moves: time of day, camera, animation. If any of those
-    are free-running, two screenshots are not comparable and you will report a
-    regression that is not real.
-  - a legacy/A-B flag so before and after come from ONE build differing only in
-    the thing under test
-  - a dev handle exposing renderer.info, the material registry and each card's
-    tile size and whether that size was measured or estimated
+And test it, automatically, without me:
+  - Step the simulation at fixed dt (do NOT rely on the render loop; a software
+    renderer runs at a few fps and any timing test reads as broken when it is
+    fine).
+  - Hold full forward for 10 simulated seconds. Each step, project the ship to
+    NDC. Assert max |ndc.x| and |ndc.y| stay under 0.35. REPORT the max
+    deviation and when it occurred, as numbers.
+  - Repeat for: hard turn while accelerating, full stop from top speed, and the
+    hover-to-flight transition. Those are the cases that break it.
+  - Emit a filmstrip (N frames tiled into one image) for anything involving
+    motion. One screenshot cannot show a dynamic fault.
 
-MEASURE BEFORE YOU CONCLUDE. Read pixel values, bounding boxes, uniforms,
-draw calls. Do not theorise from a screenshot. When a number surprises you,
-re-measure before believing it.
+--- CONTROLS ---
 
-REPORT HONESTLY, EVERY TIME: what you changed, what you VERIFIED and how, what
-you could NOT verify, and what you deliberately skipped. Include the numbers. If
-you quote a performance figure, say what camera and what viewport it came from.
+Two modes on one vehicle: hover-drive on the ground (should feel like driving)
+and free flight. I expect to iterate on feel — that is normal and I am not
+asking you to nail it first try. What I am asking is that every control constant
+lives in ONE config file with real units and a comment saying what it does, so
+tuning is editing numbers rather than hunting through logic.
 
-If something in the doctrine is wrong for this project, say so and explain.
-Don't silently ignore it.
+Player on foot: get out of the seat, walk the interior, exit and enter the ship,
+with the door animating. My games have gravity effects, so movement must not
+assume a fixed up vector — put the up vector in one place.
 
---- SPECIFIC TRAPS, EACH OF WHICH HAS ALREADY COST ME TIME ---
+--- HOW TO WORK ---
 
-- Measuring draw calls with the camera pointed at one part of the scene.
-  Frustum culling hides most of it and the number is meaningless. Measure from a
-  fixed wide view that contains the whole subject.
-- Comparing two screenshots taken at different points in an animation or
-  day/night cycle. Pin it.
-- A single-column pixel scan on a repeating pattern locking onto every other
-  row and reporting a 2x error. Scan the full row, or autocorrelate.
-- Guessing an envelope instead of solving the generator's own maths for it.
-- Quality tiers silently disabling a feature on the device class most users
-  actually have. Check what your tier logic does on a real phone.
-- Stacking two darkenings (a dark tint AND a raised gamma) and crushing a
-  surface to black.
-- Building objects before textures finish loading. A texture built from
-  undefined is black, not an error — throw instead.
+Build in PASSES and keep a MANIFEST.md recording what exists, what is stubbed,
+and what is next. This asset is too large for one session; the manifest is how
+the next session picks up without re-deriving everything.
 
---- WHAT DONE LOOKS LIKE ---
+Suggested passes: rig → silhouette options → hull exterior → material system →
+cockpit → corridor + decks → ladder/elevator → secondary rooms → on-foot
+movement → flight model → hover model → camera → polish.
 
-I should be able to orbit the ship at walking distance and find something worth
-looking at at every angle: seams that line up, rivets that follow structure,
-wear concentrated where a crew would actually touch it, grime where water would
-run, scorch where thrust exits. Nothing should read as a box with a picture on
-it.
+Before any detailing, show me the material card table: every card, its tile size
+in metres, and whether that number was MEASURED or ESTIMATED. If you cannot
+produce that table, the material system does not exist yet.
 
-Ask me anything that would change what you build. Otherwise start with the
-harness.
+Report what you verified and how, what you could not verify, and what you
+skipped. If something in the doctrine is wrong for this asset, say so — I would
+rather have your judgement than silent compliance.
 ```
 
 ---
 
-## Two things to add yourself
+## Notes for you (not part of the prompt)
 
-**Say the scope sentence out loud, twice.** "Spaceship only, nothing else, until
-it's right" is the instruction most likely to be quietly ignored. Every AI will
-want to give you a flying demo. The `TODO.md` clause above is there to give it
-somewhere to put that urge.
+**Ask for the silhouette options early and actually choose.** Primary form is the
+one thing that is expensive to change later. Everything else — rivets, panels,
+rooms — can be redone cheaply because it is generated from constants.
 
-**Ask for the tile-size table early.** Before any content work, ask it to print
-every material card with its tile size in metres and whether that number was
-measured or estimated. If it cannot produce that table, it has not built the
-material system — it has hard-coded some numbers, and the look will not hold.
+**The control trace is the highest-value item in the whole brief.** It converts
+"the controls feel wrong" from a conversation into a file. Without it you will
+keep paying for the same diagnosis.
+
+**Expect the interior to be the bulk of the work.** A hull is one pass; a cockpit
+with labelled switch banks and two decks joined by a working elevator is many.
+That is where the depth you are after actually lives.

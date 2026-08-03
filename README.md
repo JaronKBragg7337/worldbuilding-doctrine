@@ -8,11 +8,18 @@ of learning them over the course of the project.
 
 | File | What it's for |
 |---|---|
-| **`WORLDBUILDING_DOCTRINE_v3.docx`** | Attach this to the AI |
-| **`SEND_WITH_DOCTRINE.md`** | Paste one of these two prompts alongside it |
-| `WORLDBUILDING_DOCTRINE_v3.md` | Same doctrine as Markdown, if pasting is easier |
+| **`DOCTRINE-CORE.md`** | **Send this by default.** ~1 page: the 10% that changes the outcome most |
+| **`SEND_WITH_DOCTRINE.md`** | Paste one of these prompts alongside it |
+| `HERO-ASSET-BRIEF.md` | Long-form prompt for one vehicle / hero asset with a testbed |
+| `WORLDBUILDING_DOCTRINE_v3.docx` | The full reference. Attach when the work needs a specific Part |
+| `WORLDBUILDING_DOCTRINE_v3.md` | Same full reference as Markdown |
 | `report.portable.ts` | Working reference implementation of the Part 9 checks |
 | `WORLDBUILDING_DOCTRINE_v2.docx` | Previous version, kept for history |
+
+**Which to send.** The full doctrine is ~38 KB — roughly 10k tokens on *every*
+message of a conversation, which works against the point of having a system.
+Default to `DOCTRINE-CORE.md` and pull in a specific Part when the work actually
+needs it. Send the full document when starting a whole world from scratch.
 
 The only thing you edit is one line:
 
