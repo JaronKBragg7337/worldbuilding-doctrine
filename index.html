@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Worldbuilding Lab — hero asset testbed</title>
+<style>
+  :root{
+    --bg:#0d1114; --panel:#151b20; --line:#242e35; --text:#e6edf1;
+    --muted:#8fa1ad; --accent:#7fd1a8; --warn:#e0a458;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:34px 20px 72px}
+  header{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:28px}
+  h1{margin:0 0 6px;font-size:26px;letter-spacing:-.01em}
+  .sub{color:var(--muted);max-width:62ch;margin:0}
+  h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+     margin:34px 0 14px;font-weight:600}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(268px,1fr))}
+  .card{display:block;text-decoration:none;color:inherit;background:var(--panel);
+        border:1px solid var(--line);border-radius:12px;padding:16px 17px;
+        transition:border-color .15s ease, transform .15s ease}
+  .card:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .card.stub{opacity:.55;pointer-events:none}
+  .card h3{margin:0 0 5px;font-size:16px}
+  .card p{margin:0;color:var(--muted);font-size:13.5px}
+  .tag{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+       padding:2px 8px;border-radius:999px;border:1px solid var(--line);
+       color:var(--muted);margin-bottom:9px}
+  .tag.testing{color:var(--warn);border-color:#4a3a22}
+  .tag.approved{color:var(--accent);border-color:#255141}
+  .docs{display:flex;flex-wrap:wrap;gap:9px;margin-top:6px}
+  .docs a{font-size:13.5px;color:var(--accent);text-decoration:none;
+          border:1px solid var(--line);border-radius:8px;padding:7px 12px}
+  .docs a:hover{border-color:var(--accent)}
+  footer{margin-top:52px;padding-top:20px;border-top:1px solid var(--line);
+         color:var(--muted);font-size:13px}
+  code{background:#0a0e11;border:1px solid var(--line);border-radius:5px;
+       padding:1px 5px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Worldbuilding Lab</h1>
+    <p class="sub">A doctrine, a shared kit, and a testbed. Hero assets are built
+    and proven here before they go into a game. Everything is CC0.</p>
+  </header>
+
+  <h2>Hero assets</h2>
+  <div class="grid" id="assets">
+    <a class="card stub" href="assets/spaceship/index.html">
+      <span class="tag">Not started</span>
+      <h3>Spaceship</h3>
+      <p>Hover-drive and free flight. Walkable interior, two decks, ladder and
+      elevator. The template every later vehicle is built from.</p>
+    </a>
+  </div>
+
+  <h2>Read first</h2>
+  <div class="docs">
+    <a href="AGENTS.md">AGENTS.md — start here</a>
+    <a href="DOCTRINE-CORE.md">Doctrine core</a>
+    <a href="MANIFEST.md">Manifest — current state</a>
+    <a href="HERO-ASSET-BRIEF.md">Hero asset brief</a>
+    <a href="TEXTURES.md">Textures &amp; licence</a>
+    <a href="WORLDBUILDING_DOCTRINE_v3.md">Full doctrine</a>
+  </div>
+
+  <h2>Shared kit — lib/v1</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>surface.js</h3>
+      <p>Projected PBR materials at measured real-world texel density, with
+      anti-tiling, grime, dust and edge wear.</p>
+    </div>
+    <div class="card">
+      <h3>detail.js</h3>
+      <p>bevelBox, bolts, rivets, seams, welds, hinges, vents, handrails,
+      ladders. Tertiary detail, instanced.</p>
+    </div>
+    <div class="card">
+      <h3>address.js</h3>
+      <p>Grid addressing both ways — position to <code>L0-H12-R08</code>, and
+      address back to a camera pose so an AI can go and look.</p>
+    </div>
+    <div class="card">
+      <h3>harness/</h3>
+      <p>Headless capture at desktop and mobile, perf counters, and texture
+      measurement by autocorrelation.</p>
+    </div>
+  </div>
+
+  <footer>
+    CC0 1.0 — public domain. Textures are CC0 or generated; see
+    <a href="TEXTURES.md" style="color:var(--accent)">TEXTURES.md</a>.
+    <br><code>lib/v1</code> is frozen: improvements go to <code>lib/v2</code>,
+    assets opt in by import path.
+  </footer>
+
+</div>
+</body>
+</html>

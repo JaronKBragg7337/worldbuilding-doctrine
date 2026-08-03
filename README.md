@@ -1,4 +1,21 @@
-# World-Building Engineering Doctrine
+# Worldbuilding Lab
+
+**A doctrine, a shared kit, and a testbed.** Hero assets are built and proven
+here before they go into a game. Everything is CC0 — including every texture.
+
+**AI picking this up: read [`AGENTS.md`](AGENTS.md) first.** Everything you need
+is in this repo; nothing else has to be sent to you.
+
+| | |
+|---|---|
+| **Test hub** | [`index.html`](index.html) — one card per hero asset |
+| **Current state** | [`MANIFEST.md`](MANIFEST.md) — what exists, what is stubbed, what is next |
+| **Shared kit** | `lib/v1/` — materials, detailing, addressing, harness. **Frozen**; see [`lib/README.md`](lib/README.md) |
+| **Textures** | `textures/` — CC0 only, logged in [`TEXTURES.md`](TEXTURES.md) |
+
+---
+
+## The doctrine
 
 One file plus one prompt. Send both to any AI, change only the project line, and
 it starts with the systems, checks and detail standards already in hand instead
