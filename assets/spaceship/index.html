@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Spaceship harness — worldbuilding-lab</title>
+<style>
+  :root{
+    --bg:#0b1116;--panel:rgba(12,19,25,.9);--line:#2b3942;--text:#e7f1f4;
+    --muted:#91a6b0;--cyan:#78d5e7;--mint:#8ee0bc;--amber:#e8bd69;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);
+    color:var(--text);font:13px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
+  #game{display:block;width:100%;height:100%;touch-action:none}
+  .topbar{position:fixed;z-index:10;top:0;left:0;right:0;display:flex;
+    align-items:flex-start;justify-content:space-between;gap:16px;padding:14px 16px;
+    pointer-events:none}
+  .title,.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    box-shadow:0 8px 26px rgba(0,0,0,.22);backdrop-filter:blur(8px)}
+  .title{padding:10px 12px;max-width:min(620px,calc(100vw - 32px))}
+  .eyebrow{color:var(--mint);font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+  h1{font:600 16px/1.25 system-ui,sans-serif;margin:3px 0 2px}
+  .subtitle{color:var(--muted);font-size:11px}
+  .panel{padding:9px 11px;white-space:pre;min-width:216px;color:var(--muted)}
+  .panel strong{color:var(--text);font-weight:600}
+  .controls{position:fixed;z-index:10;left:16px;bottom:16px;display:none;flex-wrap:wrap;
+    gap:7px;max-width:calc(100vw - 32px)}
+  body:not([data-view="rig"]) #hero-controls{display:flex}
+  body[data-view="rig"] #rig-controls{display:flex}
+  body[data-view="walk"] #crew-controls{display:flex;bottom:66px}
+  button{appearance:none;border:1px solid var(--line);border-radius:8px;background:var(--panel);
+    color:var(--text);font:inherit;padding:8px 10px;cursor:pointer;backdrop-filter:blur(8px)}
+  button:hover,button:focus-visible{border-color:var(--cyan);outline:none}
+  button[data-active="true"]{border-color:var(--mint);color:var(--mint)}
+  #status{position:fixed;right:16px;bottom:16px;z-index:10;max-width:min(500px,calc(100vw - 32px));
+    color:var(--muted);text-align:right;pointer-events:none}
+  #status[data-state="pass"]{color:var(--mint)}
+  #status[data-state="fail"]{color:#ff8b86}
+  #frame-label{display:none;position:fixed;z-index:12;left:14px;bottom:14px;
+    padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--panel);
+    color:var(--mint);pointer-events:none}
+  body[data-capture="filmstrip"] .topbar,
+  body[data-capture="filmstrip"] .controls,
+  body[data-capture="filmstrip"] #status{display:none}
+  body[data-capture="filmstrip"] #rig-controls,
+  body[data-capture="filmstrip"] #silhouette-controls{display:none}
+  body[data-capture="filmstrip"] #frame-label{display:block}
+  #view-labels{position:fixed;inset:0;z-index:6;pointer-events:none}
+  .view-label{position:absolute;padding:5px 7px;border:1px solid var(--line);border-radius:6px;
+    background:rgba(11,17,22,.8);color:var(--cyan);font-size:10px;letter-spacing:.1em}
+  #reticle{display:none;position:fixed;z-index:8;left:50%;top:50%;width:8px;height:8px;
+    margin:-4px 0 0 -4px;border:1px solid rgba(120,213,231,.8);border-radius:50%;pointer-events:none}
+  body[data-view="walk"] #reticle{display:block}
+  @media (max-width:680px){
+    .topbar{padding:10px;display:block}.panel{margin-top:7px;min-width:0;width:max-content;
+      max-width:calc(100vw - 20px);font-size:10px}.title{max-width:calc(100vw - 20px)}
+    .subtitle{display:none}.controls{left:10px;bottom:10px;right:10px;gap:5px;max-width:none;
+      flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+    .controls::-webkit-scrollbar{display:none}
+    button{flex:0 0 auto;padding:7px 8px;font-size:10px;white-space:nowrap}
+    #status{display:none}
+    body[data-view="walk"] #crew-controls{bottom:52px;flex-wrap:wrap;overflow:visible}
+    #hero-controls button[data-angle-step],#hero-controls button[data-view-mode="archive"]{display:none}
+  }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js"}}
+</script>
+</head>
+<body data-view="exterior">
+<canvas id="game" aria-label="Instrumented spaceship proving ground"></canvas>
+<div id="view-labels" hidden></div>
+<div id="reticle"></div>
+<div class="topbar">
+  <div class="title">
+    <div class="eyebrow" id="eyebrow">Pass 03 · selected secondary form</div>
+    <h1 id="asset-title">Split-keel Courier B2</h1>
+    <div class="subtitle" id="subtitle">Material-first hero ship · selected option B</div>
+  </div>
+  <div class="panel" id="telemetry">loading…</div>
+</div>
+<div class="controls" id="hero-controls" aria-label="Selected ship fixed views">
+  <button type="button" data-view-mode="exterior">Exterior</button>
+  <button type="button" data-view-mode="engines">Drive cluster</button>
+  <button type="button" data-view-mode="cutaway">Cutaway</button>
+  <button type="button" data-view-mode="cockpit">Pilot seat</button>
+  <button type="button" data-view-mode="corridor">Upper corridor</button>
+  <button type="button" data-view-mode="lower">Lower deck</button>
+  <button type="button" data-view-mode="dorsal">Dorsal gun</button>
+  <button type="button" data-view-mode="ventral">Ventral gun</button>
+  <button type="button" data-view-mode="walk">Walk interior</button>
+  <button type="button" data-angle-step="-1" aria-label="Previous fixed turntable angle">Angle −45°</button>
+  <button type="button" data-angle-step="1" aria-label="Next fixed turntable angle">Angle +45°</button>
+  <button type="button" data-view-mode="rig">Harness</button>
+  <button type="button" data-view-mode="archive">B orthographic</button>
+</div>
+<div class="controls" id="rig-controls" aria-label="Deterministic camera scenarios">
+  <button type="button" data-scenario="full-forward">Full forward</button>
+  <button type="button" data-scenario="accelerating-turn">Hard turn</button>
+  <button type="button" data-scenario="full-stop">Full stop</button>
+  <button type="button" data-scenario="hover-to-flight">Hover → flight</button>
+  <button type="button" data-view-mode="exterior">Ship</button>
+</div>
+<div class="controls" id="crew-controls" aria-label="Teammate occupancy test">
+  <button type="button" data-crew-station="STN-DORSAL">Teammate: dorsal gun</button>
+  <button type="button" data-crew-station="STN-VENTRAL">Teammate: ventral gun</button>
+</div>
+<div id="status">Configured crew routes are geometrically navigable</div>
+<div id="frame-label"></div>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

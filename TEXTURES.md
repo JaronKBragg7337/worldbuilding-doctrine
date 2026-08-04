@@ -35,7 +35,7 @@ Normals stay at 512 deliberately: WebP encodes high-frequency normal noise badly
 — a 1024 asphalt normal cost 486 KB on its own, a fifth of the whole budget —
 and the extra resolution is not resolvable at 1–4 m tiling on a phone.
 
-## Current set — 2.29 MB, 40 files
+## Current set — shared environment + spaceship cards
 
 All from **[ambientCG](https://ambientcg.com), CC0 1.0**, converted locally to
 WebP. Tile sizes are carried on the material cards in `lib/v1/surface.js`, where
@@ -54,5 +54,14 @@ each one records whether it was **measured** or **estimated**.
 | Grass005 | lawn | 2.00 × 2.00 | **estimate** — blade length implies ~2 m |
 | Planks037A | timber | 2.00 × 2.00 | **estimate** — plank width implies ~2 m |
 | canopy_leaf | foliage cutout | n/a | **derived** from LeafSet030 (CC0) by `tools/make-canopy.js` — 260 leaves, seeded LCG, hue-rotated 72°, 36.7 % alpha coverage, 0 pixels at the border |
+| Paint004 | coated exterior and interior panels | 1.00 × 1.00 m | **estimate** — non-periodic coating; ambientCG reports no physical dimensions. Linear RGB mean measured locally: 0.705 before tint. |
+| Metal046B | blackened service alloy, engines and exposed hardware | 1.50 × 1.50 m | **estimate** — non-periodic metal; ambientCG reports no physical dimensions. Linear RGB mean measured locally: 0.051. |
+| DiamondPlate005D | corridor and machinery-deck tread plate | 0.80 × 0.80 m | **estimate with measured image cue** — 51 px tread period in the 1024 px NormalGL map; assumes a 40 mm industrial lug pitch, giving 0.803 m. Linear RGB mean: 0.148. |
+| Rubber004 | cockpit and crew-room resilient flooring | 0.75 × 0.75 m | **published** — ambientCG dimension metadata 75 × 75 cm. Linear RGB mean measured locally: 0.027. |
+
+The four spaceship sets above were downloaded as ambientCG 1K-JPG archives,
+then converted locally to WebP: colour 1024 px at quality 82; NormalGL 512 px
+at quality 85; roughness/AO 512 px at quality 78. Their source pages are
+`https://ambientcg.com/view?id=<asset ID>` and every file is CC0 1.0.
 
 Estimates are the ones to re-measure first if a surface reads at the wrong scale.
