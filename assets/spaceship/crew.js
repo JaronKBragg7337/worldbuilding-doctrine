@@ -28,6 +28,7 @@ export class CrewController {
     this.onStateChange = onStateChange;
     this.enabled = false;
     this.keys = new Set();
+    this.virtualKeys = new Set();
     this.deckId = SHIP.onFoot.startDeck;
     this.position = new THREE.Vector3(...SHIP.onFoot.startPositionMetres);
     this.heading = SHIP.onFoot.startYawRadians;
@@ -38,7 +39,7 @@ export class CrewController {
     this.remoteCrew = new Map();
     this.ridingElevator = false;
     this.elevatorDestination = null;
-    this.lastAction = "Standing inside the starboard airlock";
+    this.lastAction = "Outside the starboard airlock · open the marked door to board";
     this.installInput();
     this.syncCamera();
   }
@@ -47,11 +48,11 @@ export class CrewController {
     addEventListener("keydown", (event) => {
       if (!this.enabled) return;
       this.keys.add(event.code);
-      if (event.code === "KeyE") {
+      if (event.code === "KeyE" && !event.repeat) {
         event.preventDefault();
         this.interact();
       }
-      if (event.code === "KeyQ" && this.localStationId) {
+      if (event.code === "KeyQ" && this.localStationId && !event.repeat) {
         event.preventDefault();
         this.leaveStation();
       }
@@ -87,6 +88,7 @@ export class CrewController {
   setEnabled(enabled) {
     this.enabled = Boolean(enabled);
     this.keys.clear();
+    this.virtualKeys.clear();
     if (this.enabled) this.syncCamera();
     this.emit();
   }
@@ -99,12 +101,38 @@ export class CrewController {
     this.pitch = 0;
     this.ridingElevator = false;
     this.elevatorDestination = null;
-    this.lastAction = "Returned to the starboard airlock";
+    const outerDoor = this.ship.interior.doors.find((door) => door.id === SHIP.boarding.outerDoorId);
+    outerDoor?.setOpen(false, true);
+    this.lastAction = "Outside the starboard airlock · open the marked door to board";
     this.syncCamera();
     this.emit();
   }
 
   currentDeck() { return deckById(this.deckId); }
+
+  setVirtualInput(code, active) {
+    if (active) this.virtualKeys.add(code);
+    else this.virtualKeys.delete(code);
+    return [...this.virtualKeys];
+  }
+
+  inputActive(...codes) {
+    return codes.some((code) => this.keys.has(code) || this.virtualKeys.has(code));
+  }
+
+  doorThresholdContains(position, door, padding = SHIP.onFoot.bodyRadiusMetres + 0.04) {
+    const world = new THREE.Vector3();
+    door.group.getWorldPosition(world);
+    const halfWidth = SHIP.circulation.hatchWidthMetres / 2 + padding;
+    return door.axis === "z"
+      ? Math.abs(position.x - world.x) <= padding && Math.abs(position.z - world.z) <= halfWidth
+      : Math.abs(position.z - world.z) <= padding && Math.abs(position.x - world.x) <= halfWidth;
+  }
+
+  closedDoorBlocks(candidate) {
+    return this.ship.interior.doors.some((door) =>
+      door.fraction < SHIP.boarding.collisionOpenFraction && this.doorThresholdContains(candidate, door));
+  }
 
   isNavigable(candidate, deckId = this.deckId) {
     const radius = SHIP.onFoot.bodyRadiusMetres;
@@ -114,8 +142,9 @@ export class CrewController {
       const angle = index / 16 * Math.PI * 2;
       probes.push([candidate.x + Math.cos(angle) * radius, candidate.z + Math.sin(angle) * radius]);
     }
-    return probes.every(([x, z]) => zones.some((zone) =>
+    const insideNav = probes.every(([x, z]) => zones.some((zone) =>
       x >= zone.xMin && x <= zone.xMax && z >= zone.zMin && z <= zone.zMax));
+    return insideNav && !this.closedDoorBlocks(candidate);
   }
 
   update(dt) {
@@ -141,15 +170,15 @@ export class CrewController {
 
     let forwardInput = 0;
     let rightInput = 0;
-    if (this.keys.has("KeyW") || this.keys.has("ArrowUp")) forwardInput += 1;
-    if (this.keys.has("KeyS") || this.keys.has("ArrowDown")) forwardInput -= 1;
-    if (this.keys.has("KeyD") || this.keys.has("ArrowRight")) rightInput += 1;
-    if (this.keys.has("KeyA") || this.keys.has("ArrowLeft")) rightInput -= 1;
+    if (this.inputActive("KeyW", "ArrowUp")) forwardInput += 1;
+    if (this.inputActive("KeyS", "ArrowDown")) forwardInput -= 1;
+    if (this.inputActive("KeyD", "ArrowRight")) rightInput += 1;
+    if (this.inputActive("KeyA", "ArrowLeft")) rightInput -= 1;
     const length = Math.hypot(forwardInput, rightInput);
     if (length > 0) {
       forwardInput /= length;
       rightInput /= length;
-      const speed = this.keys.has("ShiftLeft") || this.keys.has("ShiftRight")
+      const speed = this.inputActive("ShiftLeft", "ShiftRight")
         ? SHIP.onFoot.sprintSpeedMetresPerSecond
         : SHIP.onFoot.walkSpeedMetresPerSecond;
       const forward = new THREE.Vector3(Math.sin(this.heading), 0, Math.cos(this.heading));
@@ -213,6 +242,52 @@ export class CrewController {
     return best;
   }
 
+  locationLabel() {
+    if (this.localStationId) return stationById(this.localStationId).name;
+    const [xMin, xMax, zMin, zMax] = SHIP.boarding.platformBoundsMetres;
+    if (this.deckId === "L1" && this.position.x >= xMin && this.position.x <= xMax &&
+        this.position.z >= zMin && this.position.z <= zMax &&
+        this.position.x > SHIP.boarding.outerDoorPositionMetres[0] + 0.08) {
+      return "Exterior boarding platform";
+    }
+    const deck = this.currentDeck();
+    const room = deck.rooms.find((item) =>
+      this.position.x >= item.bounds[0] && this.position.x <= item.bounds[1] &&
+      this.position.z >= item.bounds[2] && this.position.z <= item.bounds[3]);
+    if (room) return room.name;
+    const corridor = deck.corridor;
+    if (this.position.x >= corridor.xMin && this.position.x <= corridor.xMax &&
+        this.position.z >= corridor.zMin && this.position.z <= corridor.zMax) {
+      return `${deck.name} corridor`;
+    }
+    return deck.name;
+  }
+
+  interactionTarget() {
+    if (this.localStationId) {
+      return { type: "seat", id: this.localStationId, action: "leave", label: "Leave seat" };
+    }
+    const station = this.nearestStation();
+    if (station) return { type: "station", id: station.station.id, action: "sit", label: `Sit · ${station.station.name}` };
+    if (this.nearTransfer("elevator")) return { type: "elevator", id: "ELEVATOR-01", action: "use", label: "Use elevator" };
+    if (this.nearTransfer("ladder")) return { type: "ladder", id: "LADDER-01", action: "use", label: "Climb ladder" };
+    const nearest = this.nearestDoor();
+    if (nearest) {
+      const door = nearest.door;
+      const moving = Math.abs(door.fraction - door.target) > 0.001;
+      const outer = door.id === SHIP.boarding.outerDoorId;
+      const name = outer ? "airlock" : "door";
+      if (moving) return { type: "door", id: door.id, action: "wait", label: `${door.target ? "Opening" : "Closing"} ${name}…`, disabled: true };
+      return {
+        type: "door",
+        id: door.id,
+        action: door.target ? "close" : "open",
+        label: `${door.target ? "Close" : "Open"} ${name}`,
+      };
+    }
+    return null;
+  }
+
   nearTransfer(type) {
     const x = type === "ladder" ? SHIP.mechanisms.ladderXMetres : SHIP.mechanisms.elevatorXMetres;
     const z = SHIP.mechanisms.verticalTransferZMetres;
@@ -227,6 +302,11 @@ export class CrewController {
     if (this.nearTransfer("ladder")) return this.useLadder();
     const door = this.nearestDoor();
     if (door) {
+      if (door.door.target > 0.5 && this.doorThresholdContains(this.position, door.door, SHIP.onFoot.bodyRadiusMetres + 0.10)) {
+        this.lastAction = "Clear the door threshold before closing";
+        this.emit();
+        return door.door.report();
+      }
       door.door.toggle();
       this.lastAction = `${door.door.id} ${door.door.target ? "opening" : "closing"}`;
       this.emit();
@@ -337,11 +417,13 @@ export class CrewController {
       enabled: this.enabled,
       mode: this.localStationId ? "seated" : this.ridingElevator ? "elevator" : "walking",
       deck: this.deckId,
+      location: this.locationLabel(),
       positionMetres: [round(this.position.x), round(this.position.y), round(this.position.z)],
       headingRadians: round(this.heading),
       localStationId: this.localStationId,
       remoteCrew: [...this.remoteCrew.entries()].map(([stationId, crewId]) => ({ stationId, crewId })),
       lastAction: this.lastAction,
+      interaction: this.interactionTarget(),
       weapons: this.weaponState(),
     };
   }
