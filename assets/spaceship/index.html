@@ -27,13 +27,42 @@
   .panel strong{color:var(--text);font-weight:600}
   .controls{position:fixed;z-index:10;left:16px;bottom:16px;display:none;flex-wrap:wrap;
     gap:7px;max-width:calc(100vw - 32px)}
-  body:not([data-view="rig"]) #hero-controls{display:flex}
+  body:not([data-view="rig"]):not([data-view="walk"]) #hero-controls{display:flex}
   body[data-view="rig"] #rig-controls{display:flex}
-  body[data-view="walk"] #crew-controls{display:flex;bottom:66px}
   button{appearance:none;border:1px solid var(--line);border-radius:8px;background:var(--panel);
     color:var(--text);font:inherit;padding:8px 10px;cursor:pointer;backdrop-filter:blur(8px)}
   button:hover,button:focus-visible{border-color:var(--cyan);outline:none}
   button[data-active="true"]{border-color:var(--mint);color:var(--mint)}
+  button:disabled{opacity:.46;cursor:not-allowed}
+  #explore-cta{position:fixed;z-index:14;left:50%;bottom:68px;transform:translateX(-50%);
+    display:grid;gap:2px;min-width:260px;padding:12px 18px;border-color:var(--mint);
+    background:rgba(10,22,24,.94);box-shadow:0 10px 34px rgba(0,0,0,.38)}
+  #explore-cta strong{font:700 15px/1.2 system-ui,sans-serif;color:var(--mint)}
+  #explore-cta small{font:10px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--muted)}
+  body[data-view="walk"] #explore-cta,body[data-view="rig"] #explore-cta,
+  body[data-view="archive"] #explore-cta{display:none}
+  #interaction-prompt{display:none;position:fixed;z-index:13;left:50%;top:calc(50% + 18px);
+    transform:translateX(-50%);max-width:min(440px,calc(100vw - 24px));padding:7px 10px;
+    border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);
+    text-align:center;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  body[data-view="walk"] #interaction-prompt{display:block}
+  #interaction-prompt[data-available="true"]{border-color:var(--mint);color:var(--mint)}
+  #player-controls{display:none;position:fixed;z-index:14;left:16px;right:16px;bottom:16px;
+    grid-template-columns:154px minmax(240px,1fr) 186px;align-items:end;gap:12px;pointer-events:none}
+  body[data-view="walk"] #player-controls{display:grid}
+  #player-controls button{pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
+    min-width:48px;min-height:48px;padding:8px}
+  .move-pad{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px);gap:5px;
+    padding:7px;width:max-content;border:1px solid var(--line);border-radius:12px;background:var(--panel);
+    pointer-events:auto}
+  .move-pad [data-move-code="KeyW"]{grid-column:2}.move-pad [data-move-code="KeyA"]{grid-column:1;grid-row:2}
+  .move-pad [data-move-code="KeyS"]{grid-column:2;grid-row:2}.move-pad [data-move-code="KeyD"]{grid-column:3;grid-row:2}
+  .walk-meta{justify-self:center;display:grid;gap:7px;text-align:center;pointer-events:auto}
+  .desktop-help{padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--muted)}
+  .crew-slots{display:flex;justify-content:center;gap:7px;flex-wrap:wrap}
+  .crew-slots button{min-height:44px;font-size:11px}
+  .action-pad{display:grid;gap:6px;pointer-events:auto}
+  .action-pad #use-action{min-height:58px;border-color:var(--mint);color:var(--mint);font-weight:700}
   #status{position:fixed;right:16px;bottom:16px;z-index:10;max-width:min(500px,calc(100vw - 32px));
     color:var(--muted);text-align:right;pointer-events:none}
   #status[data-state="pass"]{color:var(--mint)}
@@ -43,7 +72,10 @@
     color:var(--mint);pointer-events:none}
   body[data-capture="filmstrip"] .topbar,
   body[data-capture="filmstrip"] .controls,
-  body[data-capture="filmstrip"] #status{display:none}
+  body[data-capture="filmstrip"] #status,
+  body[data-capture="filmstrip"] #player-controls,
+  body[data-capture="filmstrip"] #explore-cta,
+  body[data-capture="filmstrip"] #interaction-prompt{display:none}
   body[data-capture="filmstrip"] #rig-controls,
   body[data-capture="filmstrip"] #silhouette-controls{display:none}
   body[data-capture="filmstrip"] #frame-label{display:block}
@@ -61,7 +93,17 @@
     .controls::-webkit-scrollbar{display:none}
     button{flex:0 0 auto;padding:7px 8px;font-size:10px;white-space:nowrap}
     #status{display:none}
-    body[data-view="walk"] #crew-controls{bottom:52px;flex-wrap:wrap;overflow:visible}
+    #explore-cta{bottom:58px;min-width:min(300px,calc(100vw - 24px));padding:11px 14px}
+    #interaction-prompt{top:auto;bottom:224px;font-size:10px}
+    #player-controls{left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));
+      grid-template-columns:154px minmax(0,1fr);grid-template-areas:"meta meta" "move action";gap:7px}
+    .move-pad{grid-area:move;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(2,50px);gap:4px;padding:6px}
+    #player-controls .move-pad button{min-width:46px;min-height:50px;font-size:16px}
+    .walk-meta{grid-area:meta;justify-self:stretch;gap:5px}.desktop-help{display:none}
+    .crew-slots{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:1px}
+    .crew-slots button{min-height:44px}
+    .action-pad{grid-area:action;align-self:stretch}.action-pad button{min-height:44px;white-space:normal}
+    .action-pad #use-action{min-height:58px}
     #hero-controls button[data-angle-step],#hero-controls button[data-view-mode="archive"]{display:none}
   }
 </style>
@@ -73,6 +115,7 @@
 <canvas id="game" aria-label="Instrumented spaceship proving ground"></canvas>
 <div id="view-labels" hidden></div>
 <div id="reticle"></div>
+<div id="interaction-prompt" role="status" aria-live="polite"></div>
 <div class="topbar">
   <div class="title">
     <div class="eyebrow" id="eyebrow">Pass 03 · selected secondary form</div>
@@ -81,6 +124,10 @@
   </div>
   <div class="panel" id="telemetry">loading…</div>
 </div>
+<button type="button" id="explore-cta">
+  <strong>Play as crew · board the ship</strong>
+  <small>Start outside the marked starboard airlock · seamless entry</small>
+</button>
 <div class="controls" id="hero-controls" aria-label="Selected ship fixed views">
   <button type="button" data-view-mode="exterior">Exterior</button>
   <button type="button" data-view-mode="engines">Drive cluster</button>
@@ -90,7 +137,7 @@
   <button type="button" data-view-mode="lower">Lower deck</button>
   <button type="button" data-view-mode="dorsal">Dorsal gun</button>
   <button type="button" data-view-mode="ventral">Ventral gun</button>
-  <button type="button" data-view-mode="walk">Walk interior</button>
+  <button type="button" data-view-mode="walk">Play / board ship</button>
   <button type="button" data-angle-step="-1" aria-label="Previous fixed turntable angle">Angle −45°</button>
   <button type="button" data-angle-step="1" aria-label="Next fixed turntable angle">Angle +45°</button>
   <button type="button" data-view-mode="rig">Harness</button>
@@ -103,9 +150,25 @@
   <button type="button" data-scenario="hover-to-flight">Hover → flight</button>
   <button type="button" data-view-mode="exterior">Ship</button>
 </div>
-<div class="controls" id="crew-controls" aria-label="Teammate occupancy test">
-  <button type="button" data-crew-station="STN-DORSAL">Teammate: dorsal gun</button>
-  <button type="button" data-crew-station="STN-VENTRAL">Teammate: ventral gun</button>
+<div id="player-controls" aria-label="Player movement and interaction controls">
+  <div class="move-pad" aria-label="Movement pad">
+    <button type="button" data-move-code="KeyW" aria-label="Move forward">▲</button>
+    <button type="button" data-move-code="KeyA" aria-label="Move left">◀</button>
+    <button type="button" data-move-code="KeyS" aria-label="Move backward">▼</button>
+    <button type="button" data-move-code="KeyD" aria-label="Move right">▶</button>
+  </div>
+  <div class="walk-meta">
+    <div class="desktop-help">WASD / arrows move · drag view · E use · Q leave seat</div>
+    <div class="crew-slots" aria-label="Teammate occupancy test">
+      <button type="button" data-crew-station="STN-DORSAL">Teammate: dorsal gun</button>
+      <button type="button" data-crew-station="STN-VENTRAL">Teammate: ventral gun</button>
+    </div>
+  </div>
+  <div class="action-pad">
+    <button type="button" id="use-action">Use / interact</button>
+    <button type="button" id="leave-seat" hidden>Leave seat</button>
+    <button type="button" id="exit-walk">Exit player view</button>
+  </div>
 </div>
 <div id="status">Configured crew routes are geometrically navigable</div>
 <div id="frame-label"></div>

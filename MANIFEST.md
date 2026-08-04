@@ -15,7 +15,7 @@ Last updated: **2026-08-03**
 | `lib/v1` shared kit | **Frozen and exercised here.** Surface, addressing, detail and harness paths have rendered in-repo; foliage/openings remain unexercised here |
 | `textures/` | **Done.** 54 files, 3,067,966 bytes, all CC0; four spaceship sets are ambientCG sources converted locally to WebP |
 | Test hub `index.html` | **Done.** Lists assets; add a card per new asset |
-| `assets/spaceship/` | **B2 hero build verified.** Selected hull, material system, exterior, two-deck interior, crew stations, movement and harness are live |
+| `assets/spaceship/` | **B2 hero build verified.** Selected hull, material system, visible exterior boarding hatch, two-deck walkable interior, crew stations, PC/mobile controls and harness are live |
 | `assets/_template/` | **Done.** Regression fixture for detail/address modules |
 | GitHub Pages | Serve from `main` / root |
 
@@ -71,32 +71,43 @@ was carried into the detailed ship. `lib/v1` is unchanged.
 - Furnished cockpit, crew/galley, cargo, engineering, airlock and two dedicated
   gunnery rooms. The pilot chair controls the assisted chin repeater. Dorsal and
   ventral guns remain unavailable until their physical chairs are occupied.
-- WASD/arrow walking, drag look, sprint, E interact/sit/use and Q leave seat.
+- A visible starboard boarding platform, exterior cycle panel, blocking animated
+  pressure door and cut-through hull aperture. The player starts outside, opens
+  the door, walks into the same live scene and can close it behind them—there is
+  no load or camera swap.
+- A prominent `Play as crew · board the ship` entry point; WASD/arrow walking,
+  drag look, sprint, E interact/sit/use and Q leave seat on PC; and held
+  directional, contextual USE, teammate-gun and exit controls on touch screens.
   World up is configured once in `config.js`; the implementation does not embed
   a separate controller up vector.
 - Harness-first data remains live: 8-point ground course, 5-gate air route,
   fixed-step traces, four sustained-input scenarios, fixed views, desktop/mobile
-  captures and six-frame motion filmstrips.
+  captures and six-frame motion filmstrips. The asset-specific gate now also
+  presses the real entry, movement and USE controls through the exterior door.
 
 ### Measured final state
 
 The authoritative report is
 `assets/spaceship/harness/out/verification-report.json` (ignored locally; copied
-to `outputs/worldbuilding-lab/spaceship/b2-verified-2026-08-03/`). Final
-automated run: **PASS**, zero browser or console errors at 1440 × 900 desktop
-and 390 × 844 mobile.
+to `outputs/worldbuilding-lab/spaceship/b2-boarding-verified-2026-08-03/`). Final
+automated responsive/control run: **PASS**, zero browser or console errors at
+1440 × 900 desktop and 390 × 844 mobile. This final boarding run used
+`--filmstrips=0`; the prior same-day six-frame flight filmstrips remain valid
+because the flight rig and scenario inputs were not changed.
 
 | Measurement | Result |
 |---|---:|
 | Declared pressure hull | 22.40 × 7.60 × 31.00 m |
 | Measured pressure geometry | 21.60 × 7.258 × 31.00 m |
-| Measured operational envelope | 21.60 × 8.81 × 33.19 m |
-| Whole authored asset | 172 meshes · 129,624 triangles · 426 instances |
-| Airlock → pilot route | 26.60 m · 275 samples at 0.10 m · PASS |
+| Measured operational envelope | 22.968 × 8.81 × 33.19 m |
+| Whole authored asset | 176 meshes · 131,264 triangles · 426 instances |
+| Exterior platform → pilot route | 29.006 m · 303 samples at 0.10 m · PASS |
 | Pilot → dorsal gun route | 15.05 m · 153 samples at 0.10 m · PASS |
 | Pilot → ventral gun route | 20.25 m · 209 samples at 0.10 m · PASS |
 | Door mechanism | 0.468 m leaf travel · 0.717 s measured · PASS |
 | Elevator mechanism | y 1.05 → 3.60 → 1.05 m · 2.417 s each way · PASS |
+| Direct player-control boarding | x 12.05 start → 11.583 blocked → 10.37 inside · door 0 → 1 → 0 · desktop/mobile PASS |
+| Minimum visible control target | 48 px desktop · 46 px mobile · PASS |
 
 Crew assertions passed: seated pilot has the assisted gun; an uncrewed dorsal
 station is unavailable; a teammate enables it; leaving the pilot seat disables
@@ -110,8 +121,8 @@ screen-clamp correction. Worst desktop result was hover-to-flight at
 `x = 0.16944`, `y = 0.25421`.
 
 Static material/visibility batching reduced the desktop exterior fixed view to
-84 calls / 77,992 visible triangles. Desktop cutaway is 126 calls; mobile
-exterior is 76 calls. These are view-dependent renderer counts, not whole-asset
+108 calls / 82,676 visible triangles. Desktop cutaway is 126 calls; mobile
+exterior is 100 calls. These are view-dependent renderer counts, not whole-asset
 triangle totals.
 
 Seven local utility lights were added after material/form/detail. Shadows remain
@@ -124,11 +135,14 @@ disabled. Local verification used port 8101 because another process owned 8099.
   Rubber004 uses published 0.75 × 0.75 m metadata and was not independently
   measured.
 - Camera containment is verified numerically; handling *feel* still needs the
-  owner's hands-on pass. Non-default gravity orientation is configurable but was
-  not exercised in this run.
-- The outer airlock door and boarding ladder are modelled and animated. The
-  automated on-foot gate currently proves interior room-to-room circulation,
-  not continuous exterior boarding traversal.
+  owner's hands-on pass. Responsive layout and touch events were exercised in
+  emulated browser viewports, not on the owner's physical phone or PC.
+  Non-default gravity orientation is configurable but was not exercised in this
+  run.
+- Continuous exterior boarding is verified through the real CTA, directional
+  control and USE button at both harness viewports. This proves one-player local
+  interaction, collision and same-scene traversal; it does not imply networked
+  replication.
 - Weapon availability and physical station ownership are implemented. Weapon
   firing, damage and networked teammate synchronization are intentionally outside
   this hero-asset testbed.
@@ -141,11 +155,9 @@ Doctrine Part 9 were used; `lib/v1` was not edited to repair documentation.
 
 1. Owner hands-on pass for walking/seat placement and hover/flight feel; tune
    constants only in `assets/spaceship/config.js`.
-2. If the testbed expands, add a measured exterior boarding route and closed-door
-   collision gate before calling enter/exit fully proven.
-3. Multiplayer synchronization and weapon behaviour belong in the consuming
+2. Multiplayer synchronization and weapon behaviour belong in the consuming
    game, not this asset repo.
-4. Still unexercised in this repo: `foliage.js` and `openings.js`; they run live
+3. Still unexercised in this repo: `foliage.js` and `openings.js`; they run live
    elsewhere, but nothing here imports them.
 
 ---

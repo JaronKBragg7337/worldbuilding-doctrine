@@ -128,6 +128,15 @@ export const CONFIG = Object.freeze({
       ladderXMetres: -1.35,
       verticalTransferZMetres: -1.65,
     }),
+    boarding: Object.freeze({
+      outerDoorId: "DOOR-AIRLOCK-OUTER",
+      outerDoorPositionMetres: Object.freeze([11.20, 1.05, -3.05]),
+      apertureCenterMetres: Object.freeze([11.24, 2.05, -3.05]),
+      apertureWidthMetres: 1.02,
+      apertureHeightMetres: 2.08,
+      platformBoundsMetres: Object.freeze([10.38, 12.55, -3.85, -2.25]),
+      collisionOpenFraction: 0.82,
+    }),
     onFoot: Object.freeze({
       eyeHeightMetres: 1.68,
       bodyRadiusMetres: 0.30,
@@ -136,7 +145,7 @@ export const CONFIG = Object.freeze({
       lookRadiansPerPixel: 0.0022,
       interactionDistanceMetres: 1.45,
       startDeck: "L1",
-      startPositionMetres: Object.freeze([9.25, 1.05, -3.05]),
+      startPositionMetres: Object.freeze([12.05, 1.05, -3.05]),
       startYawRadians: -1.5707963268,
     }),
     fixedViews: Object.freeze({
@@ -191,7 +200,7 @@ export const CONFIG = Object.freeze({
       Object.freeze({ id: "STN-NAV", name: "Navigation / systems", deck: "L2", positionMetres: Object.freeze([-1.25, 3.72, 7.75]), yawRadians: 0, seat: true }),
       Object.freeze({ id: "STN-DORSAL", name: "Dorsal turret chair", deck: "L2", positionMetres: Object.freeze([7.15, 3.72, 0.75]), yawRadians: -1.5707963268, seat: true }),
       Object.freeze({ id: "STN-VENTRAL", name: "Ventral turret chair", deck: "L1", positionMetres: Object.freeze([0, 1.17, -6.35]), yawRadians: 3.1415926536, seat: true }),
-      Object.freeze({ id: "STN-AIRLOCK", name: "Starboard airlock", deck: "L1", positionMetres: Object.freeze([9.65, 1.17, -3.05]), yawRadians: -1.5707963268, seat: false }),
+      Object.freeze({ id: "STN-AIRLOCK", name: "Starboard boarding platform", deck: "L1", positionMetres: Object.freeze([12.05, 1.05, -3.05]), yawRadians: -1.5707963268, seat: false }),
     ]),
     weapons: Object.freeze([
       Object.freeze({
@@ -222,11 +231,13 @@ export const CONFIG = Object.freeze({
     crewRoutes: Object.freeze([
       Object.freeze({
         id: "ROUTE-AIRLOCK-PILOT",
-        name: "Board ship and take the flight seat",
+        name: "Board through the starboard airlock and take the flight seat",
         fromStation: "STN-AIRLOCK",
         toStation: "STN-PILOT",
         pointsMetres: Object.freeze([
-          Object.freeze([9.65, 1.17, -3.05]), Object.freeze([7.6, 1.17, -3.05]),
+          Object.freeze([12.05, 1.05, -3.05]), Object.freeze([11.56, 1.05, -3.05]),
+          Object.freeze([10.35, 1.17, -3.05]), Object.freeze([9.65, 1.17, -3.05]),
+          Object.freeze([7.6, 1.17, -3.05]),
           Object.freeze([0, 1.17, -3.05]), Object.freeze([0, 1.17, -1.65]),
           Object.freeze([1.35, 1.17, -1.65]), Object.freeze([1.35, 3.72, -1.65]),
           Object.freeze([0, 3.72, -1.65]), Object.freeze([0, 3.72, 8.65]),

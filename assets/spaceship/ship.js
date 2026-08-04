@@ -36,6 +36,52 @@ function addBox(parent, name, size, position, material, bevel = SHIP.exposedEdge
   return addMesh(parent, bevelBox(...size, bevel), material, name, position, rotation);
 }
 
+function boardingCutMaterial(source, label) {
+  const material = source.clone();
+  material.name = `${source.name || "material"}-${label}-aperture`;
+  material.stencilWrite = true;
+  material.stencilWriteMask = 0x00;
+  material.stencilFunc = THREE.NotEqualStencilFunc;
+  material.stencilRef = 1;
+  material.stencilFuncMask = 0xff;
+  material.stencilFail = THREE.KeepStencilOp;
+  material.stencilZFail = THREE.KeepStencilOp;
+  material.stencilZPass = THREE.KeepStencilOp;
+  return material;
+}
+
+function makeBoardingApertureMask() {
+  const boarding = SHIP.boarding;
+  const material = new THREE.MeshBasicMaterial({
+    colorWrite: false,
+    depthWrite: false,
+    depthTest: false,
+    side: THREE.DoubleSide,
+    stencilWrite: true,
+    stencilWriteMask: 0xff,
+    stencilFunc: THREE.AlwaysStencilFunc,
+    stencilRef: 1,
+    stencilFuncMask: 0xff,
+    stencilFail: THREE.ReplaceStencilOp,
+    stencilZFail: THREE.ReplaceStencilOp,
+    stencilZPass: THREE.ReplaceStencilOp,
+  });
+  material.name = "MAT-BOARDING-APERTURE-MASK";
+  const mask = addMesh(
+    new THREE.Group(),
+    new THREE.PlaneGeometry(boarding.apertureWidthMetres, boarding.apertureHeightMetres),
+    material,
+    "AIRLOCK-BOARDING-APERTURE-MASK",
+    boarding.apertureCenterMetres,
+    [0, Math.PI / 2, 0],
+  );
+  mask.renderOrder = -100;
+  mask.frustumCulled = false;
+  mask.userData.interactionType = "boarding-aperture-mask";
+  mask.userData.excludeFromMetrics = true;
+  return mask;
+}
+
 function cylinderBetween(parent, name, start, end, radius, material, radialSegments = 10) {
   const a = new THREE.Vector3(...start);
   const b = new THREE.Vector3(...end);
@@ -53,7 +99,7 @@ function countGeometry(root) {
   let triangles = 0;
   let instances = 0;
   root.traverse((object) => {
-    if (!object.isMesh) return;
+    if (!object.isMesh || object.userData.excludeFromMetrics) return;
     meshes += 1;
     if (object.isInstancedMesh) instances += object.count;
     const geometry = object.geometry;
@@ -119,8 +165,12 @@ function makePrimaryHull(materials) {
   cutawayHide.name = "SHIP-B2-CutawayHide-Exterior";
   root.add(cutawayHide);
 
+  const boardingShells = new Set(["starboard-pressure-boom", "starboard-airlock-blister"]);
   for (const component of SHIP.exteriorComponents) {
-    const material = materials[component.material] || materials.hull;
+    const sourceMaterial = materials[component.material] || materials.hull;
+    const material = boardingShells.has(component.name)
+      ? boardingCutMaterial(sourceMaterial, component.name)
+      : sourceMaterial;
     const parent = /starboard|dorsal-command/.test(component.name) ? cutawayHide : root;
     const mesh = addMesh(parent, componentGeometry(component), material, component.name);
     mesh.userData.primaryForm = true;
@@ -135,7 +185,10 @@ function makePrimaryHull(materials) {
   ], 4.72, 5.78), materials.glass, "CockpitCanopyAssembly");
   canopy.renderOrder = 3;
 
-  return { root, cutawayHide, canopy };
+  const boardingApertureMask = makeBoardingApertureMask();
+  root.add(boardingApertureMask);
+
+  return { root, cutawayHide, canopy, boardingApertureMask };
 }
 
 function makeEngine(spec, materials) {
@@ -422,6 +475,9 @@ function makeRoomShell(room, deck, groups, materials, doors) {
 
   if (room.entrance.wall !== "none") {
     const opening = { center: room.entrance.centerMetres };
+    const boardingOpening = room.id === "ROOM-L1-AIRLOCK"
+      ? { center: SHIP.boarding.apertureCenterMetres[2] }
+      : null;
     addWallX(roomRoot, `${room.id}-south-wall`, xMin, xMax, zMin, floorY, ceilingY, materials.interior,
       room.entrance.wall === "south" ? opening : null);
     addWallX(groups.interiorCutawayHide, `${room.id}-north-wall`, xMin, xMax, zMax, floorY, ceilingY,
@@ -430,7 +486,7 @@ function makeRoomShell(room, deck, groups, materials, doors) {
     addWallZ(roomRoot, `${room.id}-west-wall`, zMin, zMax, xMin, floorY, ceilingY, materials.interior,
       room.entrance.wall === "west" ? opening : null);
     addWallZ(groups.interiorCutawayHide, `${room.id}-east-wall`, zMin, zMax, xMax, floorY, ceilingY, materials.interior,
-      room.entrance.wall === "east" ? opening : null);
+      room.entrance.wall === "east" ? opening : boardingOpening);
 
     const axis = /north|south/.test(room.entrance.wall) ? "x" : "z";
     let center;
@@ -818,11 +874,11 @@ function furnishGunnery(root, deck, station, materials) {
   ], 5, 2, 0.075, materials);
 }
 
-function furnishAirlock(root, deck, materials, doors) {
+function furnishAirlock(root, boardingRoot, deck, materials, doors) {
   const floorY = deck.floorYMetres;
   const outer = makeSlidingDoor({
     id: "DOOR-AIRLOCK-OUTER",
-    center: [10.66, -3.05],
+    center: [SHIP.boarding.outerDoorPositionMetres[0], SHIP.boarding.outerDoorPositionMetres[2]],
     axis: "z",
     floorY,
     material: materials.accent,
@@ -830,7 +886,7 @@ function furnishAirlock(root, deck, materials, doors) {
     initiallyOpen: false,
   });
   outer.mechanism.seconds = SHIP.mechanisms.airlockDoorSeconds;
-  root.add(outer.group);
+  boardingRoot.add(outer.group);
   doors.push(outer.mechanism);
   for (const z of [-3.7, -2.4]) {
     const rail = handrail(0.72, materials.alloy, { radius: 0.018, standoff: 0.06 });
@@ -910,6 +966,33 @@ function makeExteriorDetails(materials) {
     }
   }
 
+  // The airlock is a real boarding threshold. The player begins on this
+  // platform, opens the blocking door, and crosses into the same live scene.
+  const [platformXMin, platformXMax, platformZMin, platformZMax] = SHIP.boarding.platformBoundsMetres;
+  addBox(root, "AIRLOCK-BOARDING-PLATFORM", [
+    platformXMax - platformXMin, 0.12, platformZMax - platformZMin,
+  ], [
+    (platformXMin + platformXMax) / 2, SHIP.boarding.outerDoorPositionMetres[1] - 0.06,
+    (platformZMin + platformZMax) / 2,
+  ], materials.tread, 0.018);
+
+  const [apertureX, apertureY, apertureZ] = SHIP.boarding.apertureCenterMetres;
+  for (const z of [apertureZ - 0.56, apertureZ + 0.56]) {
+    addBox(root, "Airlock-ExteriorJamb", [0.10, 2.18, 0.10], [apertureX + 0.01, 2.10, z], materials.alloy, 0.012);
+  }
+  addBox(root, "Airlock-ExteriorHeader", [0.10, 0.10, 1.22], [apertureX + 0.01, 3.16, apertureZ], materials.alloy, 0.012);
+  addBox(root, "Airlock-ExteriorThreshold", [0.16, 0.07, 1.12], [apertureX - 0.02, 1.055, apertureZ], materials.alloyDark, 0.012);
+  addBox(root, "Airlock-ExteriorCyclePanel", [0.08, 0.38, 0.24], [apertureX + 0.07, 2.20, apertureZ + 0.77], materials.alloyDark, 0.012);
+  addBox(root, "Airlock-ExteriorCycleScreen", [0.04, 0.17, 0.12], [apertureX + 0.115, 2.25, apertureZ + 0.77], materials.screen, 0.006);
+  addBox(root, "Airlock-ExteriorLocator", [0.04, 0.12, 0.44], [apertureX + 0.09, apertureY + 1.13, apertureZ], materials.screenAmber, 0.006);
+
+  for (const z of [platformZMin + 0.07, platformZMax - 0.07]) {
+    cylinderBetween(root, "Airlock-PlatformRail", [11.05, 1.95, z], [12.46, 1.95, z], 0.022, materials.alloy, 10);
+    for (const x of [11.18, 12.42]) {
+      cylinderBetween(root, "Airlock-PlatformPost", [x, 1.05, z], [x, 1.95, z], 0.022, materials.alloy, 10);
+    }
+  }
+
   // Exterior boarding ladder is co-located with the starboard airlock.
   const boardingLadder = ladder(1.65, materials.alloy, {
     width: SHIP.circulation.ladderWidthMetres,
@@ -968,6 +1051,8 @@ function makeInterior(materials) {
   ceilings.name = "SHIP-B2-InteriorCeilings";
   const cutawayHide = new THREE.Group();
   cutawayHide.name = "SHIP-B2-CutawayHide-Interior";
+  const boardingRoot = new THREE.Group();
+  boardingRoot.name = "SHIP-B2-BoardingDoor";
   root.add(ceilings, cutawayHide);
   const groups = { interior: root, interiorCeilings: ceilings, interiorCutawayHide: cutawayHide };
   const doors = [];
@@ -986,6 +1071,15 @@ function makeInterior(materials) {
     }
   }
 
+  const [platformXMin, platformXMax, platformZMin, platformZMax] = SHIP.boarding.platformBoundsMetres;
+  navZones.L1.push({
+    id: "NAV-L1-BOARDING-PLATFORM",
+    xMin: platformXMin,
+    xMax: platformXMax,
+    zMin: platformZMin,
+    zMax: platformZMax,
+  });
+
   const transfers = makeVerticalTransfers(groups, materials, navZones);
 
   for (const station of SHIP.stations.filter((item) => item.seat)) {
@@ -1003,9 +1097,9 @@ function makeInterior(materials) {
   furnishEngineering(root, lower, materials);
   furnishGunnery(root, upper, SHIP.stations.find((item) => item.id === "STN-DORSAL"), materials);
   furnishGunnery(root, lower, SHIP.stations.find((item) => item.id === "STN-VENTRAL"), materials);
-  furnishAirlock(root, lower, materials, doors);
+  furnishAirlock(root, boardingRoot, lower, materials, doors);
 
-  return { root, ceilings, cutawayHide, doors, stationObjects, roomObjects, navZones, ...transfers };
+  return { root, boardingRoot, ceilings, cutawayHide, doors, stationObjects, roomObjects, navZones, ...transfers };
 }
 
 function routeLength(points) {
@@ -1088,7 +1182,14 @@ function routeReport(route, navZones) {
 
 function measureBounds(root) {
   root.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(root);
+  const box = new THREE.Box3().makeEmpty();
+  const objectBox = new THREE.Box3();
+  root.traverse((object) => {
+    if (!object.isMesh || object.userData.excludeFromMetrics) return;
+    if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+    objectBox.copy(object.geometry.boundingBox).applyMatrix4(object.matrixWorld);
+    box.union(objectBox);
+  });
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
   return { min: vec(box.min), max: vec(box.max), center: vec(center), dimensionsMetres: vec(size) };
@@ -1109,7 +1210,7 @@ export function buildHeroShip(materials) {
   const details = makeExteriorDetails(materials);
   const interior = makeInterior(materials);
   const crewFigure = makeCrewFigure(materials);
-  root.add(exterior.root, secondary.root, details.root, interior.root, crewFigure);
+  root.add(exterior.root, secondary.root, details.root, interior.root, interior.boardingRoot, crewFigure);
 
   const batching = {
     exteriorCutaway: batchStaticMeshes(exterior.cutawayHide, "ExteriorCutaway"),
@@ -1183,6 +1284,7 @@ export function buildHeroShip(materials) {
       secondary.root.visible = exteriorVisible;
       details.root.visible = exteriorVisible;
       interior.root.visible = interiorVisible;
+      interior.boardingRoot.visible = new Set(["exterior", "cutaway", "lower", "walk"]).has(mode);
       const cutaway = mode === "cutaway";
       exterior.cutawayHide.visible = !cutaway;
       secondary.cutawayHide.visible = !cutaway;

@@ -33,12 +33,18 @@ const eyebrow = document.getElementById("eyebrow");
 const assetTitle = document.getElementById("asset-title");
 const subtitle = document.getElementById("subtitle");
 const labelLayer = document.getElementById("view-labels");
+const interactionPrompt = document.getElementById("interaction-prompt");
+const exploreButton = document.getElementById("explore-cta");
+const useActionButton = document.getElementById("use-action");
+const leaveSeatButton = document.getElementById("leave-seat");
+const exitWalkButton = document.getElementById("exit-walk");
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
   antialias: true,
   preserveDrawingBuffer: true,
   powerPreference: "high-performance",
+  stencil: true,
 });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, CONFIG.render.maxDevicePixelRatio));
 renderer.setSize(innerWidth, innerHeight, false);
@@ -128,6 +134,7 @@ const crew = new CrewController({
     if (stage.mode === "walk") {
       updateTelemetry();
       updateHeader();
+      updatePlayerControls();
     }
   },
 });
@@ -181,6 +188,62 @@ function updateButtons() {
   }
 }
 
+let playerControlsSignature = "";
+function updatePlayerControls() {
+  if (!interactionPrompt || !useActionButton || !leaveSeatButton) return;
+  const state = crew.report();
+  const target = state.interaction;
+  const signature = JSON.stringify([
+    target?.id || null,
+    target?.action || null,
+    target?.label || null,
+    Boolean(target?.disabled),
+    state.localStationId,
+    matchMedia("(pointer: coarse)").matches,
+  ]);
+  if (signature === playerControlsSignature) return;
+  playerControlsSignature = signature;
+  interactionPrompt.textContent = target
+    ? `${target.label} · ${matchMedia("(pointer: coarse)").matches ? "tap USE" : "press E"}`
+    : "Drag to look · move toward a door, ladder, elevator, or seat";
+  interactionPrompt.dataset.available = String(Boolean(target));
+  useActionButton.textContent = target?.label || "Use / interact";
+  useActionButton.disabled = !target || Boolean(target.disabled);
+  leaveSeatButton.disabled = !state.localStationId;
+  leaveSeatButton.hidden = !state.localStationId;
+}
+
+function elementMeasurement(element) {
+  if (!element) return { exists: false, visible: false, width: 0, height: 0 };
+  const rect = element.getBoundingClientRect();
+  const style = getComputedStyle(element);
+  return {
+    exists: true,
+    visible: style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0,
+    width: +rect.width.toFixed(1),
+    height: +rect.height.toFixed(1),
+  };
+}
+
+function uiReport() {
+  const previous = stage.mode;
+  setView("exterior");
+  const exterior = { explore: elementMeasurement(exploreButton) };
+  setView("walk");
+  const touchTargets = [...document.querySelectorAll("#player-controls button")].map((button) => ({
+    id: button.id || button.dataset.moveCode || button.textContent.trim(),
+    ...elementMeasurement(button),
+  }));
+  const walk = {
+    controls: elementMeasurement(document.getElementById("player-controls")),
+    use: elementMeasurement(useActionButton),
+    prompt: elementMeasurement(interactionPrompt),
+    touchTargets,
+  };
+  setView(previous);
+  return { exterior, walk };
+}
+
 function weaponLine(weapon) {
   const state = weapon.available ? "READY" : "EMPTY";
   return `${weapon.id.replace("WPN-", "").padEnd(11)} ${state}`;
@@ -201,10 +264,10 @@ function updateTelemetry() {
   if (stage.mode === "walk") {
     const state = crew.report();
     telemetry.innerHTML =
-      `<strong>${state.mode}</strong> · ${state.deck}\n` +
+      `<strong>${state.mode}</strong> · ${state.location}\n` +
       `<strong>position</strong> ${state.positionMetres.join(", ")} m\n` +
       `${state.weapons.map(weaponLine).join("\n")}\n` +
-      `<strong>E</strong> use / sit · <strong>Q</strong> leave seat`;
+      `<strong>E / USE</strong> interact · <strong>Q</strong> leave seat`;
     return;
   }
   const report = ship.report();
@@ -236,7 +299,7 @@ function updateHeader() {
   if (mode === "walk") {
     const state = crew.report();
     eyebrow.textContent = "Walkable crew loop";
-    assetTitle.textContent = state.localStationId || `${state.deck} · on foot`;
+    assetTitle.textContent = state.localStationId || state.location;
     subtitle.textContent = state.lastAction;
     const unavailable = state.weapons.filter((weapon) => !weapon.available && weapon.requiresDedicatedOperator).length;
     status.textContent = `${unavailable} teammate gun${unavailable === 1 ? "" : "s"} currently unmanned`;
@@ -275,8 +338,15 @@ function setView(mode) {
   updateButtons();
   updateHeader();
   updateTelemetry();
+  updatePlayerControls();
   renderCurrent();
   return mode;
+}
+
+function startExploring() {
+  crew.reset();
+  setView("walk");
+  return crew.report();
 }
 
 function setTurntableAngle(degrees) {
@@ -340,6 +410,68 @@ function runCrewScenario() {
   };
   result.passed = Object.values(result.assertions).every(Boolean) && ship.report().routeGatePassed;
   crew.reset();
+  return result;
+}
+
+function runBoardingScenario() {
+  const previousView = stage.mode;
+  const shipRoot = ship.root;
+  const outerDoor = ship.interior.doors.find((door) => door.id === CONFIG.ship.boarding.outerDoorId);
+  const dt = 1 / 60;
+  const advance = (seconds) => {
+    const steps = Math.ceil(seconds / dt);
+    for (let index = 0; index < steps; index += 1) {
+      ship.update(dt);
+      crew.update(dt);
+    }
+    return steps;
+  };
+
+  setView("walk");
+  crew.reset();
+  const outside = crew.report();
+
+  crew.setVirtualInput("KeyW", true);
+  advance(1.0);
+  crew.setVirtualInput("KeyW", false);
+  const blockedByClosedDoor = crew.report();
+
+  const openAction = crew.interact();
+  advance(outerDoor.seconds + dt);
+  const openDoor = outerDoor.report();
+
+  crew.setVirtualInput("KeyW", true);
+  advance(0.42);
+  crew.setVirtualInput("KeyW", false);
+  const inside = crew.report();
+
+  const closeAction = crew.interact();
+  advance(outerDoor.seconds + dt);
+  const closedBehind = outerDoor.report();
+
+  const doorX = CONFIG.ship.boarding.outerDoorPositionMetres[0];
+  const result = {
+    scenario: "seamless-exterior-boarding",
+    outside,
+    blockedByClosedDoor,
+    openAction,
+    openDoor,
+    inside,
+    closeAction,
+    closedBehind,
+    assertions: {
+      startsOutsideAtMarkedAirlock: outside.location === "Exterior boarding platform",
+      closedDoorBlocksPlayer: blockedByClosedDoor.positionMetres[0] > doorX + CONFIG.ship.onFoot.bodyRadiusMetres - 0.05,
+      useOpensOuterDoor: openAction?.id === CONFIG.ship.boarding.outerDoorId && openDoor.openFraction === 1,
+      crossesContinuouslyIntoAirlock: inside.location === "Starboard airlock" && inside.positionMetres[0] < doorX - 0.35,
+      useClosesDoorBehindPlayer: closeAction?.id === CONFIG.ship.boarding.outerDoorId && closedBehind.openFraction === 0,
+      staysInSameSceneAndView: ship.root === shipRoot && stage.mode === "walk",
+    },
+  };
+  result.passed = Object.values(result.assertions).every(Boolean);
+
+  crew.reset();
+  setView(previousView);
   return result;
 }
 
@@ -458,7 +590,9 @@ function measureShipView(mode = "exterior") {
 }
 
 for (const button of document.querySelectorAll("[data-view-mode]")) {
-  button.addEventListener("click", () => setView(button.dataset.viewMode));
+  button.addEventListener("click", () => button.dataset.viewMode === "walk"
+    ? startExploring()
+    : setView(button.dataset.viewMode));
 }
 for (const button of document.querySelectorAll("[data-angle-step]")) {
   button.addEventListener("click", () => stepTurntableAngle(button.dataset.angleStep));
@@ -469,6 +603,39 @@ for (const button of document.querySelectorAll("[data-scenario]")) {
 for (const button of document.querySelectorAll("[data-crew-station]")) {
   button.addEventListener("click", () => toggleRemoteCrew(button.dataset.crewStation));
 }
+exploreButton?.addEventListener("click", startExploring);
+useActionButton?.addEventListener("click", () => crew.interact());
+leaveSeatButton?.addEventListener("click", () => crew.leaveStation());
+exitWalkButton?.addEventListener("click", () => setView("exterior"));
+
+for (const button of document.querySelectorAll("[data-move-code]")) {
+  const code = button.dataset.moveCode;
+  const release = (event) => {
+    crew.setVirtualInput(code, false);
+    if (event?.pointerId != null && button.hasPointerCapture?.(event.pointerId)) {
+      button.releasePointerCapture(event.pointerId);
+    }
+  };
+  button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    crew.setVirtualInput(code, true);
+    try {
+      button.setPointerCapture?.(event.pointerId);
+    } catch {
+      // Synthetic verification events do not own a browser pointer. A real
+      // touch/mouse pointer still captures normally.
+    }
+  });
+  button.addEventListener("pointerup", release);
+  button.addEventListener("pointercancel", release);
+  button.addEventListener("lostpointercapture", () => crew.setVirtualInput(code, false));
+  button.addEventListener("contextmenu", (event) => event.preventDefault());
+}
+addEventListener("blur", () => {
+  for (const button of document.querySelectorAll("[data-move-code]")) {
+    crew.setVirtualInput(button.dataset.moveCode, false);
+  }
+});
 
 function resize() {
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, CONFIG.render.maxDevicePixelRatio));
@@ -483,12 +650,15 @@ let frames = 0;
 let lastFrameSeconds = performance.now() / 1000;
 function tick(nowMs) {
   const nowSeconds = nowMs / 1000;
-  const dt = Math.min(0.05, Math.max(0, nowSeconds - lastFrameSeconds));
+  const dt = Math.max(0, nowSeconds - lastFrameSeconds);
   lastFrameSeconds = nowSeconds;
   ship.update(dt);
-  crew.update(dt);
+  crew.update(Math.min(0.05, dt));
   renderCurrent();
-  if (++frames % 20 === 0) updateTelemetry();
+  if (stage.mode === "walk") updatePlayerControls();
+  if (++frames % 20 === 0) {
+    updateTelemetry();
+  }
   requestAnimationFrame(tick);
 }
 
@@ -523,7 +693,10 @@ if (dev) {
     runScenarioToTime: (name, seconds) => simulation.runScenarioToTime(name, seconds),
     traceJSON: () => simulation.traceJSON(),
     runCrewScenario,
+    runBoardingScenario,
     runMechanismScenario,
+    uiReport,
+    startExploring,
     toggleRemoteCrew,
     occupyStation: (id) => crew.occupyStation(id),
     leaveStation: () => crew.leaveStation(),

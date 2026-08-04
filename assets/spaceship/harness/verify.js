@@ -45,6 +45,86 @@ async function waitForLab(page, url) {
   await page.waitForFunction(() => window.LAB?.simulation, null, { timeout: 120000 });
 }
 
+async function exercisePlayerUi(page, view, outDir) {
+  const initial = await page.evaluate(() => {
+    window.LAB.setView("exterior");
+    return { view: window.LAB.stage.mode, shipRoot: window.LAB.ship.root.uuid };
+  });
+  await page.click("#explore-cta");
+  const outside = await page.evaluate(() => window.LAB.crewReport());
+
+  const forward = '[data-move-code="KeyW"]';
+  const pointer = { pointerId: 17, pointerType: "touch", isPrimary: true, bubbles: true };
+  await page.dispatchEvent(forward, "pointerdown", pointer);
+  await page.evaluate(() => {
+    for (let index = 0; index < 90; index += 1) window.LAB.crew.update(1 / 60);
+  });
+  await page.dispatchEvent(forward, "pointerup", pointer);
+  const blocked = await page.evaluate(() => window.LAB.crewReport());
+
+  await page.click("#use-action");
+  const opened = await page.evaluate(() => {
+    const door = window.LAB.ship.mechanisms.find(
+      (mechanism) => mechanism.id === window.LAB.CONFIG.ship.boarding.outerDoorId,
+    );
+    for (let index = 0; index < 90; index += 1) window.LAB.ship.update(1 / 60);
+    window.LAB.setView("walk");
+    return door.report();
+  });
+  const openShot = path.join(outDir, "views", `${view}-boarding-open.png`);
+  fs.mkdirSync(path.dirname(openShot), { recursive: true });
+  await page.screenshot({ path: openShot, animations: "disabled", timeout: 120000 });
+
+  await page.dispatchEvent(forward, "pointerdown", pointer);
+  await page.evaluate(() => {
+    for (let index = 0; index < 26; index += 1) window.LAB.crew.update(1 / 60);
+  });
+  await page.dispatchEvent(forward, "pointerup", pointer);
+  const inside = await page.evaluate(() => {
+    window.LAB.setView("walk");
+    return window.LAB.crewReport();
+  });
+
+  await page.click("#use-action");
+  const completed = await page.evaluate(() => {
+    const door = window.LAB.ship.mechanisms.find(
+      (mechanism) => mechanism.id === window.LAB.CONFIG.ship.boarding.outerDoorId,
+    );
+    for (let index = 0; index < 90; index += 1) window.LAB.ship.update(1 / 60);
+    const result = {
+      view: window.LAB.stage.mode,
+      shipRoot: window.LAB.ship.root.uuid,
+      door: door.report(),
+    };
+    window.LAB.crew.reset();
+    return result;
+  });
+
+  const doorX = await page.evaluate(() => window.LAB.CONFIG.ship.boarding.outerDoorPositionMetres[0]);
+  const bodyRadius = await page.evaluate(() => window.LAB.CONFIG.ship.onFoot.bodyRadiusMetres);
+  const result = {
+    scenario: "player-controls-seamless-boarding",
+    initial,
+    outside,
+    blocked,
+    opened,
+    inside,
+    completed,
+    screenshot: openShot,
+    assertions: {
+      ctaEntersPlayerView: initial.view === "exterior" && outside.mode === "walking",
+      forwardControlIsConnected: blocked.positionMetres[0] < outside.positionMetres[0] - 0.1,
+      closedHatchBlocksMovement: blocked.positionMetres[0] > doorX + bodyRadius - 0.05,
+      useControlOpensHatch: opened.openFraction === 1 && opened.targetOpen,
+      forwardControlBoardsShip: inside.location === "Starboard airlock" && inside.positionMetres[0] < doorX - 0.35,
+      useControlClosesBehindPlayer: completed.door.openFraction === 0 && !completed.door.targetOpen,
+      noSceneOrViewSwap: completed.shipRoot === initial.shipRoot && completed.view === "walk",
+    },
+  };
+  result.passed = Object.values(result.assertions).every(Boolean);
+  return result;
+}
+
 async function measureViewport(browser, baseUrl, view, outDir) {
   const viewport = VIEWPORTS[view];
   const context = await browser.newContext({
@@ -83,9 +163,10 @@ async function measureViewport(browser, baseUrl, view, outDir) {
     shipViews[mode] = await page.evaluate((nextMode) => window.LAB.measureShipView(nextMode), mode);
     const shot = path.join(outDir, "views", `${view}-${mode}.png`);
     fs.mkdirSync(path.dirname(shot), { recursive: true });
-    await page.screenshot({ path: shot, animations: "disabled" });
+    await page.screenshot({ path: shot, animations: "disabled", timeout: 120000 });
     screenshots.push({ mode, path: shot });
   }
+  const playerUiScenario = await exercisePlayerUi(page, view, outDir);
   const stats = await page.evaluate(() => ({
     renderer: window.LAB.stats(),
     scene: window.LAB.sceneReport(),
@@ -93,11 +174,13 @@ async function measureViewport(browser, baseUrl, view, outDir) {
     shipMaterialCards: window.LAB.spaceshipMaterialReport(),
     ship: window.LAB.shipReport(),
     crewScenario: window.LAB.runCrewScenario(),
+    boardingScenario: window.LAB.runBoardingScenario(),
     mechanismScenario: window.LAB.runMechanismScenario(),
+    ui: window.LAB.uiReport(),
     silhouettes: window.LAB.measureAllSilhouettes(),
   }));
   await context.close();
-  return { view, viewport, results, shipViews, screenshots, stats, errors };
+  return { view, viewport, results, shipViews, screenshots, playerUiScenario, stats, errors };
 }
 
 async function buildFilmstrips(browser, baseUrl, outDir) {
@@ -117,7 +200,7 @@ async function buildFilmstrips(browser, baseUrl, outDir) {
       }, { name: scenario, t: time });
       const frame = path.join(outDir, "frames", scenario, `${String(time).padStart(4, "0")}.png`);
       fs.mkdirSync(path.dirname(frame), { recursive: true });
-      await page.screenshot({ path: frame, animations: "disabled" });
+      await page.screenshot({ path: frame, animations: "disabled", timeout: 120000 });
       frames.push(frame);
     }
 
@@ -179,7 +262,17 @@ async function main() {
     viewport.results.every((result) => result.passed) &&
     viewport.stats.ship.routeGatePassed &&
     viewport.stats.crewScenario.passed &&
+    viewport.stats.boardingScenario.passed &&
+    viewport.playerUiScenario.passed &&
     viewport.stats.mechanismScenario.passed &&
+    viewport.stats.ui.exterior.explore.visible &&
+    viewport.stats.ui.exterior.explore.height >= 44 &&
+    viewport.stats.ui.walk.controls.visible &&
+    viewport.stats.ui.walk.use.visible &&
+    viewport.stats.ui.walk.prompt.visible &&
+    viewport.stats.ui.walk.touchTargets
+      .filter((target) => target.id !== "leave-seat")
+      .every((target) => target.visible && target.width >= 44 && target.height >= 44) &&
     viewport.stats.shipMaterialCards.cards.length === 4 &&
     viewport.stats.shipMaterialCards.textureDrawingInCode === false &&
     Object.values(viewport.shipViews).every((view) =>
@@ -202,7 +295,15 @@ async function main() {
     console.log(
       `ship routes=${viewport.stats.ship.routes.length} gate=${viewport.stats.ship.routeGatePassed ? "PASS" : "FAIL"} ` +
       `crew=${viewport.stats.crewScenario.passed ? "PASS" : "FAIL"} ` +
+      `boarding=${viewport.stats.boardingScenario.passed ? "PASS" : "FAIL"} ` +
+      `player-ui=${viewport.playerUiScenario.passed ? "PASS" : "FAIL"} ` +
       `mechanisms=${viewport.stats.mechanismScenario.passed ? "PASS" : "FAIL"}`,
+    );
+    const visibleTargets = viewport.stats.ui.walk.touchTargets.filter((target) => target.visible);
+    console.log(
+      `ui explore=${viewport.stats.ui.exterior.explore.visible ? "PASS" : "FAIL"} ` +
+      `player-controls=${viewport.stats.ui.walk.controls.visible ? "PASS" : "FAIL"} ` +
+      `min-touch=${Math.min(...visibleTargets.map((target) => Math.min(target.width, target.height)))}px`,
     );
     for (const [mode, measurement] of Object.entries(viewport.shipViews)) {
       console.log(
