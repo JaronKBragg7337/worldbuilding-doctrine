@@ -3,6 +3,9 @@
 **A doctrine, a shared kit, and a testbed.** Hero assets are built and proven
 here before they go into a game. Everything is CC0 — including every texture.
 
+**Live, no-login testbed:** [Worldbuilding Lab](https://jaronkbragg7337.github.io/worldbuilding-lab/)
+· [open the Split-keel Courier B2 directly](https://jaronkbragg7337.github.io/worldbuilding-lab/assets/spaceship/)
+
 **AI picking this up: read [`AGENTS.md`](AGENTS.md) first.** Everything you need
 is in this repo; nothing else has to be sent to you.
 
