@@ -1,0 +1,16 @@
+{
+  "name": "worldbuilding-lab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Instrumented Three.js testbed for reusable hero assets.",
+  "scripts": {
+    "serve": "node lib/v1/harness/serve.js 8101",
+    "shoot:spaceship:rig": "node lib/v1/harness/shoot.js --tag=spaceship-rig --views=desktop,mobile --url=\"http://localhost:8101/assets/spaceship/index.html?dev=1&view=rig\"",
+    "verify:spaceship": "node assets/spaceship/harness/verify.js --url=http://localhost:8101/assets/spaceship/index.html"
+  },
+  "license": "CC0-1.0",
+  "devDependencies": {
+    "playwright": "1.62.1",
+    "serve-handler": "6.1.7"
+  }
+}
